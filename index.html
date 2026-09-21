@@ -88,12 +88,121 @@
       </div>
     </section>
 
-    <!-- 5. In coppia -->
-    <section id="v-done" class="card" hidden>
-      <h2>Siete collegati</h2>
-      <p class="big-text"><span id="me-name"></span> <span class="vs">vs</span> <span id="partner-name"></span></p>
-      <p class="hint">Il collegamento funziona. Le sfide arrivano nel prossimo passo.</p>
-      <button id="b-leave" class="danger link" type="button">Scollega la coppia</button>
+    <!-- 5. App principale (in coppia) -->
+    <section id="v-main" hidden>
+      <p class="vs-line"><span id="me-name"></span> <span class="vs">vs</span> <span id="partner-name"></span></p>
+
+      <nav class="tabs" role="tablist">
+        <button type="button" class="tab" data-tab="oggi" role="tab">Oggi</button>
+        <button type="button" class="tab" data-tab="sfida" role="tab">Sfida</button>
+        <button type="button" class="tab" data-tab="profilo" role="tab">Profilo</button>
+      </nav>
+
+      <!-- OGGI -->
+      <div id="t-oggi" class="tab-page">
+        <div id="o-setup" class="card" hidden>
+          <h2>Imposta la sveglia</h2>
+          <p class="hint">Scegli orario e giorni per iniziare a sfidarvi.</p>
+          <button id="b-go-profile" type="button">Imposta ora</button>
+        </div>
+
+        <div class="card">
+          <p class="label">La tua sveglia</p>
+          <p id="o-alarm" class="clock"></p>
+          <p id="o-status" class="hint"></p>
+
+          <div id="o-play" hidden>
+            <p id="o-timer" class="timer">0:00.0</p>
+            <div class="bar"><div id="o-bar"></div></div>
+            <p id="o-left" class="small center"></p>
+            <div class="challenge">
+              <p class="label">Challenge di oggi</p>
+              <p id="o-ch-name" class="ch-name"></p>
+              <p id="o-ch-detail" class="hint"></p>
+            </div>
+            <button id="b-done" class="done" type="button">Fatto</button>
+          </div>
+
+          <div id="o-result" hidden>
+            <p id="o-result-main" class="result"></p>
+            <p id="o-result-ch" class="small center"></p>
+          </div>
+        </div>
+
+        <div class="card">
+          <p class="label" id="o-p-label">Partner</p>
+          <p id="o-p-alarm" class="clock small-clock"></p>
+          <p id="o-p-status" class="hint"></p>
+        </div>
+
+        <p id="o-day" class="banner" hidden></p>
+      </div>
+
+      <!-- SFIDA -->
+      <div id="t-sfida" class="tab-page" hidden>
+        <div class="card">
+          <p class="label" id="s-week-label">Questa settimana</p>
+          <div class="score">
+            <div><p class="score-name" id="s-me-name"></p><p class="score-pts" id="s-me-pts"></p><p class="small" id="s-me-time"></p></div>
+            <div class="score-sep">–</div>
+            <div><p class="score-name" id="s-pa-name"></p><p class="score-pts" id="s-pa-pts"></p><p class="small" id="s-pa-time"></p></div>
+          </div>
+          <p id="s-verdict" class="banner"></p>
+          <table class="days">
+            <thead><tr><th>Giorno</th><th>Challenge</th><th id="s-th-me">Tu</th><th id="s-th-pa">Partner</th></tr></thead>
+            <tbody id="s-days"></tbody>
+          </table>
+          <p class="small">Pari punti? Vince il tempo totale più basso (non completata = 5:00).</p>
+        </div>
+
+        <div class="card">
+          <p class="label" id="s-prize-label">Premio della settimana</p>
+          <p id="s-prize-current" class="prize"></p>
+          <form id="f-prize" novalidate>
+            <input id="prize" type="text" maxlength="200" placeholder="Es. cena offerta dal perdente" autocomplete="off">
+            <button type="submit" class="secondary">Salva premio</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <p class="label">Storico</p>
+          <p id="h-wins" class="wins"></p>
+          <ul id="h-list" class="history"></ul>
+        </div>
+      </div>
+
+      <!-- PROFILO -->
+      <div id="t-profilo" class="tab-page" hidden>
+        <div class="card">
+          <h2>La mia sveglia</h2>
+          <p class="hint">Solo da lunedì a venerdì. Un cambio vale anche per oggi solo se il nuovo orario è almeno 30 minuti più avanti di adesso.</p>
+          <form id="f-alarm" novalidate>
+            <label for="alarm-time">Orario</label>
+            <input id="alarm-time" type="time" step="60" required>
+            <label>Giorni</label>
+            <div class="days-pick" id="days-pick">
+              <button type="button" class="day" data-day="1" aria-pressed="false">Lun</button>
+              <button type="button" class="day" data-day="2" aria-pressed="false">Mar</button>
+              <button type="button" class="day" data-day="3" aria-pressed="false">Mer</button>
+              <button type="button" class="day" data-day="4" aria-pressed="false">Gio</button>
+              <button type="button" class="day" data-day="5" aria-pressed="false">Ven</button>
+            </div>
+            <button type="submit">Salva sveglia</button>
+          </form>
+          <p id="p-effective" class="small"></p>
+        </div>
+
+        <div class="card">
+          <p class="label" id="p-partner-label">Sveglia del partner</p>
+          <p id="p-partner" class="hint"></p>
+        </div>
+
+        <div class="card">
+          <p class="label">Account</p>
+          <p id="p-account" class="hint"></p>
+          <button id="b-leave" class="danger link" type="button">Scollega la coppia</button>
+        </div>
+      </div>
     </section>
 
     <footer id="foot" hidden>
