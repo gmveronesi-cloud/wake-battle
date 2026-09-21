@@ -1,5 +1,5 @@
 'use strict';
-// Wake Battle — giochi (v3). Usato sia dall'app (sfida vera) sia da beta.html (prova).
+// Wake Battle — giochi (v4). Usato sia dall'app (sfida vera) sia da beta.html (prova).
 // Ogni gioco riceve i parametri generati dal server e, a fine partita, chiama
 // onDone(risposta): la risposta viene poi controllata dal server.
 // API: WBGames.has(codice) · WBGames.mount(codice, contenitore, parametri, { onDone })
@@ -14,15 +14,27 @@
   }
 
   // ---------------------------------------------------------------------
-  // MEMORIA: 6 simboli visibili per 5 s, poi toccarli nello stesso ordine.
-  // Errore al primo tocco sbagliato → nuova sequenza (tentativo successivo).
+  // MEMORIA (v4): 5 round di fila. In ogni round 3 simboli visibili 3 s,
+  // poi vanno toccati nello stesso ordine. Round riuscito → il successivo
+  // parte da solo. Tocco sbagliato → si riparte dal round 1 con simboli nuovi.
+  // Le sequenze del server si usano in ordine: ogni round (anche sbagliato)
+  // consuma la successiva. Risposta: { inizio, sequenze, tentativi }.
+  // Parametri vecchi (senza "round", 6 simboli): un solo round, risposta
+  // { tentativo, sequenza } come nel passo 3.1.
   // ---------------------------------------------------------------------
   const SYM = ['🍎', '🐶', '⭐', '🚗', '🌙', '🎈', '🔑', '🐟', '🌵'];
 
   function memoria(box, params, opts) {
     const seqs = params.sequenze || [];
-    const showMs = Number(params.mostra_ms) || 5000;
-    let k = 0;
+    const legacy = !params.round;
+    const rounds = legacy ? 1 : Number(params.round);
+    const showMs = Number(params.mostra_ms) || 3000;
+    const len = seqs.length ? seqs[0].length : 3;
+    let next = 0;       // prossima sequenza da usare
+    let start = 0;      // prima sequenza della partita in corso
+    let round = 0;      // round in corso (0-based)
+    let tries = 0;      // partite iniziate (1 = nessun errore)
+    let done = [];      // sequenze completate nella partita in corso
     let timers = [];
     let dead = false;
 
@@ -31,27 +43,56 @@
 
     function intro() {
       box.replaceChildren();
-      box.appendChild(el('p', 'Memorizza i 6 simboli: restano visibili 5 secondi. Poi toccali nello stesso ordine.', 'hint'));
+      box.dataset.phase = 'intro';
+      const text = legacy
+        ? 'Memorizza i ' + len + ' simboli: restano visibili ' + Math.round(showMs / 1000) + ' secondi. Poi toccali nello stesso ordine.'
+        : rounds + ' round: in ognuno memorizza ' + len + ' simboli (restano visibili ' + Math.round(showMs / 1000) +
+          ' secondi), poi toccali nello stesso ordine. Un errore fa ripartire dal round 1.';
+      box.appendChild(el('p', text, 'hint'));
       const b = el('button', 'Inizia', 'game-start');
       b.type = 'button';
-      b.addEventListener('click', () => look(k));
+      b.addEventListener('click', newGame);
       box.appendChild(b);
     }
 
+    // pallini dei round: pieni = fatti, bordato = in corso
+    function dots() {
+      const d = el('div', null, 'mem-dots');
+      for (let i = 0; i < rounds; i++) {
+        d.appendChild(el('span', null, i < round ? 'done' : i === round ? 'now' : ''));
+      }
+      return d;
+    }
+    function header(text, cls) {
+      if (!legacy) box.appendChild(dots());
+      box.appendChild(el('p', text, cls || 'game-note'));
+    }
+
+    // nuova partita dal round 1, con la prossima sequenza libera
+    function newGame() {
+      tries++;
+      start = next;
+      round = 0;
+      done = [];
+      look();
+    }
+
     // fase 1: guarda
-    function look(i) {
+    function look() {
       clear();
-      if (i >= seqs.length) {
+      if (next >= seqs.length) {
         box.replaceChildren(el('p', 'Sequenze finite.', 'game-note bad'));
+        box.dataset.phase = 'finite';
         return;
       }
-      k = i;
-      const seq = seqs[k];
+      const seq = seqs[next++];
       box.replaceChildren();
       box.dataset.phase = 'guarda';
-      box.dataset.tentativo = String(k + 1);
-      box.appendChild(el('p', k === 0 ? 'Memorizza!' : 'Nuova sequenza (tentativo ' + (k + 1) + ')', 'game-note'));
-      const row = el('div', null, 'mem-row');
+      box.dataset.round = String(round + 1);
+      box.dataset.tentativo = String(tries);
+      header(legacy ? (tries === 1 ? 'Memorizza!' : 'Nuova sequenza (tentativo ' + tries + ')')
+        : 'Round ' + (round + 1) + ' di ' + rounds + ' · memorizza!');
+      const row = el('div', null, 'mem-row n' + seq.length);
       seq.forEach((s) => {
         const c = el('div', SYM[s], 'mem-card');
         c.dataset.s = String(s);
@@ -72,9 +113,9 @@
     function answer(seq) {
       box.replaceChildren();
       box.dataset.phase = 'ripeti';
-      const note = el('p', 'Tocca i simboli nello stesso ordine', 'game-note');
-      box.appendChild(note);
-      const slots = el('div', null, 'mem-row');
+      header(legacy ? 'Tocca i simboli nello stesso ordine' : 'Round ' + (round + 1) + ' di ' + rounds + ' · tocca in ordine');
+      const note = box.querySelector('.game-note');
+      const slots = el('div', null, 'mem-row n' + seq.length);
       const slotEls = seq.map(() => { const s = el('div', '', 'mem-card mem-slot'); slots.appendChild(s); return s; });
       box.appendChild(slots);
       const keys = el('div', null, 'mem-keys');
@@ -99,17 +140,29 @@
           b.disabled = true;
           if (picked.length === seq.length) {
             lock();
-            note.textContent = 'Controllo…';
-            note.className = 'game-note';
-            box.dataset.phase = 'fine';
-            opts.onDone({ tentativo: k, sequenza: picked.slice() });
+            done.push(picked.slice());
+            round++;
+            if (round < rounds) {
+              note.textContent = '✓ Round ' + round + ' fatto!';
+              note.className = 'game-note good';
+              box.dataset.phase = 'ok';
+              later(look, 700);
+            } else {
+              note.textContent = 'Controllo…';
+              note.className = 'game-note';
+              box.dataset.phase = 'fine';
+              opts.onDone(legacy
+                ? { tentativo: start, sequenza: done[0] }
+                : { inizio: start, sequenze: done.slice(), tentativi: tries });
+            }
           }
         } else {
           lock();
           b.classList.add('wrong');
-          note.textContent = 'Sbagliato! Nuova sequenza…';
+          note.textContent = legacy ? 'Sbagliato! Nuova sequenza…' : 'Sbagliato! Si riparte dal round 1…';
           note.className = 'game-note bad';
-          later(() => look(k + 1), 900);
+          box.dataset.phase = 'errore';
+          later(newGame, 900);
         }
       }));
     }
@@ -117,7 +170,8 @@
     intro();
     return {
       destroy() { dead = true; clear(); box.replaceChildren(); delete box.dataset.phase; },
-      retry() { if (!dead) look(k + 1); },
+      // il server ha rifiutato la risposta: nuova partita con sequenze nuove
+      retry() { if (!dead) { clear(); newGame(); } },
     };
   }
 
