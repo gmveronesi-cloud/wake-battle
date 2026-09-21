@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#0f1115">
   <title>Wake Battle</title>
-  <link rel="stylesheet" href="style.css?v=2">
+  <link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
   <main id="app">
@@ -119,6 +119,7 @@
               <p class="label">Challenge di oggi</p>
               <p id="o-ch-name" class="ch-name"></p>
               <p id="o-ch-detail" class="hint"></p>
+              <div id="o-game" class="game" hidden></div>
             </div>
             <button id="b-done" class="done" type="button">Fatto</button>
           </div>
@@ -198,6 +199,12 @@
         </div>
 
         <div class="card">
+          <p class="label">Giochi</p>
+          <p class="hint">Prova i giochi senza conseguenze, prima che entrino nella sfida.</p>
+          <a id="l-beta" class="button secondary" href="beta.html">Prova i giochi (beta)</a>
+        </div>
+
+        <div class="card">
           <p class="label">Account</p>
           <p id="p-account" class="hint"></p>
           <button id="b-leave" class="danger link" type="button">Scollega la coppia</button>
@@ -213,6 +220,7 @@
 
   <script src="vendor/supabase.js"></script>
   <script src="config.js"></script>
-  <script src="app.js?v=2"></script>
+  <script src="games.js?v=3"></script>
+  <script src="app.js?v=3"></script>
 </body>
 </html>

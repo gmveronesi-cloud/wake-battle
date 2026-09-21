@@ -85,3 +85,34 @@ ul.history li { padding: 10px 0; border-top: 1px solid var(--line); overflow-wra
 .days-pick { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 0 0 16px; }
 .day { padding: 12px 0; background: transparent; color: var(--muted); border: 1px solid var(--line); font-weight: 600; }
 .day[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+/* --- Passo 3: giochi + pagina di prova --- */
+a.button { display: block; text-align: center; text-decoration: none; font-weight: 600; border-radius: 12px;
+  padding: 15px; background: var(--accent); color: var(--accent-ink); }
+a.button.secondary { background: transparent; color: var(--text); border: 1px solid var(--line); }
+footer a { color: var(--muted); }
+.beta-tag { font-size: 14px; vertical-align: middle; background: var(--accent); color: var(--accent-ink);
+  border-radius: 8px; padding: 2px 8px; margin-left: 6px; }
+ul.games { list-style: none; padding: 0; margin: 0; }
+ul.games li { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); }
+ul.games li.muted .game-name { color: var(--muted); }
+.game-name { flex: 1; font-weight: 600; }
+.tag { font-size: 13px; color: var(--muted); border: 1px solid var(--line); border-radius: 8px; padding: 2px 8px; white-space: nowrap; }
+.tag.on { color: var(--ok); border-color: var(--ok); }
+button.small-btn { width: auto; padding: 8px 16px; }
+
+.game { margin: 8px 0 4px; }
+.game-note { text-align: center; font-weight: 600; margin: 0 0 12px; }
+.game-note.bad { color: var(--danger); }
+.game-bar { margin: 14px 0 4px; }
+.game-bar > div { width: 100%; }
+button.game-start { font-size: 22px; padding: 20px; background: var(--ok); color: #06231a; }
+.mem-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.mem-card { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 30px;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 10px; }
+.mem-slot { border-style: dashed; }
+.mem-slot.ok { border-style: solid; border-color: var(--ok); }
+.mem-keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 18px; }
+.mem-key { font-size: 38px; padding: 14px 0; background: var(--bg); border: 1px solid var(--line); line-height: 1.2; }
+.mem-key:disabled { opacity: 0.3; }
+.mem-key.wrong { opacity: 1; border-color: var(--danger); background: #3a1f1f; }

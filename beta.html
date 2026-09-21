@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://rxxqdseojllcniowrzxm.supabase.co wss://rxxqdseojllcniowrzxm.supabase.co; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#0f1115">
+  <title>Wake Battle — Prova giochi</title>
+  <link rel="stylesheet" href="style.css?v=3">
+</head>
+<body>
+  <main id="app">
+    <header class="brand">
+      <h1>Prova giochi <span class="beta-tag">beta</span></h1>
+    </header>
+
+    <p id="msg" class="msg" role="status" aria-live="polite" hidden></p>
+
+    <section id="b-login" class="card" hidden>
+      <p class="hint">Per provare i giochi devi prima accedere nell'app.</p>
+      <a class="button" href="./">Vai all'app</a>
+    </section>
+
+    <section id="b-list" class="card" hidden>
+      <p class="hint">Qui i giochi si provano senza conseguenze: niente tempi né punti salvati. La risposta viene comunque controllata dal server, come nella sfida vera.</p>
+      <ul id="b-games" class="games"></ul>
+    </section>
+
+    <section id="b-play" class="card" hidden>
+      <p class="label">Prova</p>
+      <p id="b-name" class="ch-name"></p>
+      <p id="b-timer" class="timer">0:00.0</p>
+      <div id="b-game" class="game"></div>
+      <div id="b-result" hidden>
+        <p id="b-result-main" class="result"></p>
+        <p id="b-result-sub" class="small center"></p>
+        <button id="b-again" type="button">Rigioca</button>
+      </div>
+      <button id="b-back" class="link" type="button">← Elenco giochi</button>
+    </section>
+
+    <footer>
+      <a class="small" href="./">← Torna all'app</a>
+    </footer>
+  </main>
+
+  <script src="vendor/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="games.js?v=3"></script>
+  <script src="beta.js?v=3"></script>
+</body>
+</html>

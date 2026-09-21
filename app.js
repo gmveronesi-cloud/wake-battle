@@ -1,5 +1,5 @@
 'use strict';
-// Wake Battle — Passo 1 (accesso + coppia) + Passo 2 (sveglie, challenge del giorno, punteggi).
+// Wake Battle v3 — Passo 1 (accesso + coppia) + Passo 2 (sveglie, punteggi) + Passo 3 (giochi veri, Memoria).
 // Regola di sicurezza: i testi degli utenti vanno SEMPRE in textContent, mai in innerHTML.
 // Tempi e punti li decide il server: l'app mostra solo quello che il server risponde.
 
@@ -29,12 +29,14 @@
   let todayPoll = null;      // ricarica periodica di Oggi
   let loadingToday = false;
   let selectedDays = new Set();
+  let game = null;           // gioco montato in Oggi
+  let gameKey = null;        // giorno + codice del gioco montato
 
   // ---------- UI helpers ----------
   function show(viewId) {
     VIEWS.forEach((v) => { $(v).hidden = v !== viewId; });
     $('foot').hidden = viewId === 'v-email' || viewId === 'v-otp';
-    if (viewId !== 'v-main') stopMainTimers();
+    if (viewId !== 'v-main') { stopMainTimers(); stopGame(); }
   }
   function msg(text, ok) {
     const el = $('msg');
@@ -54,6 +56,11 @@
   function stopMainTimers() {
     clearInterval(tickTimer); tickTimer = null;
     clearInterval(todayPoll); todayPoll = null;
+  }
+  function stopGame() {
+    if (game) { game.destroy(); game = null; }
+    gameKey = null;
+    $('o-game').hidden = true;
   }
   function el(tag, text, cls) {
     const e = document.createElement(tag);
@@ -127,6 +134,16 @@
     codice_non_valido: 'Codice non valido o scaduto. Chiedi al partner di crearne uno nuovo.',
     codice_proprio: 'Questo è il tuo codice: deve inserirlo il tuo partner.',
     gia_in_coppia: 'Sei già in coppia.',
+  };
+
+  const DONE_ERRORS = {
+    troppo_presto: 'La sveglia non è ancora suonata.',
+    tempo_scaduto: 'Tempo scaduto: sono passati più di 5 minuti.',
+    gia_fatto: 'Hai già completato la challenge di oggi.',
+    nessuna_sveglia: 'Oggi non hai la sveglia.',
+    serve_il_gioco: 'Questa challenge si completa con il gioco: ricarica la pagina per aggiornare l\'app.',
+    nessun_gioco: 'Oggi basta il pulsante Fatto.',
+    risposta_sbagliata: 'Risposta non accettata dal server: nuova sequenza.',
   };
 
   // chiama una funzione del server; restituisce data oppure null (con messaggio)
@@ -341,6 +358,12 @@
     $('o-setup').hidden = !(s && s.ok && !s.io);
   }
 
+  // codice del gioco vero da giocare oggi (null = pulsante Fatto)
+  function gameCode(ch) {
+    const g = ch && ch.parametri && ch.parametri.gioco;
+    return g && window.WBGames && window.WBGames.has(g) ? g : null;
+  }
+
   function renderToday() {
     const t = today;
     const io = t.io, pa = t.partner;
@@ -359,11 +382,29 @@
     };
     $('o-status').textContent = statusText[io.stato] || '';
 
+    const code = io.stato === 'in_corso' ? gameCode(io.challenge) : null;
     if (io.stato === 'in_corso' && io.challenge) {
       $('o-ch-name').textContent = io.challenge.nome;
-      const ex = io.challenge.parametri && EXERCISES[io.challenge.parametri.esercizio];
-      $('o-ch-detail').textContent = (ex ? ex + '. ' : '') + 'Per ora basta premere Fatto: i giochi veri arrivano al passo 3.';
+      if (code) {
+        $('o-ch-detail').textContent = '';
+      } else {
+        const ex = io.challenge.parametri && EXERCISES[io.challenge.parametri.esercizio];
+        $('o-ch-detail').textContent = (ex ? ex + '. ' : '') + 'Per ora basta premere Fatto: questo gioco arriva più avanti.';
+      }
     }
+    $('b-done').hidden = !!code;
+    if (code) {
+      const key = t.giorno + ':' + code;
+      if (gameKey !== key) {
+        stopGame();
+        gameKey = key;
+        $('o-game').hidden = false;
+        game = window.WBGames.mount(code, $('o-game'), io.challenge.parametri, { onDone: finishGame });
+      }
+    } else if (game) {
+      stopGame();
+    }
+
     if (io.stato === 'fatto') {
       $('o-result-main').textContent = 'Fatto in ' + dur(io.secondi);
       $('o-result-main').className = 'result win';
@@ -425,23 +466,27 @@
     }
   }
 
-  $('b-done').addEventListener('click', (ev) => busy(ev.currentTarget, async () => {
+  // registra il risultato (Fatto semplice o gioco); true = registrato
+  async function sendDone(fn, args) {
     msg('');
-    const r = await call('complete_challenge');
-    if (!r) return;
+    const r = await call(fn, args);
+    if (!r) return false;
     if (!r.ok) {
-      const texts = {
-        troppo_presto: 'La sveglia non è ancora suonata.',
-        tempo_scaduto: 'Tempo scaduto: sono passati più di 5 minuti.',
-        gia_fatto: 'Hai già completato la challenge di oggi.',
-        nessuna_sveglia: 'Oggi non hai la sveglia.',
-      };
-      msg(texts[r.error] || 'Non registrato. Riprova.');
-    } else {
-      msg('Registrato: ' + dur(r.secondi), true);
+      msg(DONE_ERRORS[r.error] || 'Non registrato. Riprova.');
+      if (r.error === 'risposta_sbagliata' && game) game.retry();
+      else await loadToday();
+      return false;
     }
+    msg('Registrato: ' + dur(r.secondi), true);
     await loadToday();
-  }));
+    return true;
+  }
+
+  $('b-done').addEventListener('click', (ev) => busy(ev.currentTarget, () => sendDone('complete_challenge')));
+
+  function finishGame(answer) {
+    return sendDone('complete_game', { p_answer: answer });
+  }
 
   // ---------- SFIDA ----------
   async function loadWeek() {
@@ -607,6 +652,7 @@
   $('b-logout').addEventListener('click', async () => {
     stopTimers();
     stopMainTimers();
+    stopGame();
     await sb.auth.signOut();
     msg('');
     show('v-email');
