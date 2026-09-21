@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://rxxqdseojllcniowrzxm.supabase.co wss://rxxqdseojllcniowrzxm.supabase.co; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Wake Battle">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0f1115">
+  <title>Wake Battle</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="app">
+    <header class="brand">
+      <h1>Wake Battle</h1>
+    </header>
+
+    <p id="msg" class="msg" role="status" aria-live="polite" hidden></p>
+
+    <!-- 1. Email -->
+    <section id="v-email" class="card" hidden>
+      <h2>Accedi</h2>
+      <p class="hint">Ti mandiamo un codice di 6 cifre via email.</p>
+      <form id="f-email" novalidate>
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" required>
+        <button type="submit">Invia codice</button>
+      </form>
+    </section>
+
+    <!-- 2. Codice email -->
+    <section id="v-otp" class="card" hidden>
+      <h2>Inserisci il codice</h2>
+      <p class="hint">Inviato a <strong id="otp-email"></strong>. Controlla anche lo spam.</p>
+      <form id="f-otp" novalidate>
+        <label for="otp">Codice a 6 cifre</label>
+        <input id="otp" class="big" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" required>
+        <button type="submit">Accedi</button>
+      </form>
+      <div class="row">
+        <button id="b-resend" class="link" type="button">Invia di nuovo</button>
+        <button id="b-change-email" class="link" type="button">Cambia email</button>
+      </div>
+    </section>
+
+    <!-- 3. Nome -->
+    <section id="v-name" class="card" hidden>
+      <h2>Come ti chiami?</h2>
+      <p class="hint">Il nome che vedrà il tuo partner.</p>
+      <form id="f-name" novalidate>
+        <label for="name">Nome</label>
+        <input id="name" type="text" maxlength="30" autocomplete="given-name" required>
+        <button type="submit">Salva</button>
+      </form>
+    </section>
+
+    <!-- 4. Collegamento coppia -->
+    <section id="v-pair" class="card" hidden>
+      <h2>Collegati al partner</h2>
+      <p class="hint">Uno dei due crea il codice, l'altro lo inserisce.</p>
+
+      <div id="pair-choose">
+        <button id="b-create" type="button">Crea un codice</button>
+        <div class="sep"><span>oppure</span></div>
+        <form id="f-join" novalidate>
+          <label for="join-code">Ho un codice</label>
+          <input id="join-code" class="big code" type="text" autocapitalize="characters" autocomplete="off" spellcheck="false" required>
+          <button type="submit" class="secondary">Collegati</button>
+        </form>
+      </div>
+
+      <div id="pair-wait" hidden>
+        <p class="hint">Fai inserire questo codice al tuo partner:</p>
+        <p id="pair-code" class="code-show"></p>
+        <p class="hint">Scade tra <strong id="pair-left"></strong></p>
+        <p class="hint small">In attesa del partner…</p>
+        <button id="b-cancel-code" class="link" type="button">Annulla</button>
+      </div>
+
+      <div id="pair-expired" hidden>
+        <p class="hint">Codice scaduto.</p>
+        <button id="b-regen" type="button">Crea un nuovo codice</button>
+      </div>
+    </section>
+
+    <!-- 5. In coppia -->
+    <section id="v-done" class="card" hidden>
+      <h2>Siete collegati</h2>
+      <p class="big-text"><span id="me-name"></span> <span class="vs">vs</span> <span id="partner-name"></span></p>
+      <p class="hint">Il collegamento funziona. Le sfide arrivano nel prossimo passo.</p>
+      <button id="b-leave" class="danger link" type="button">Scollega la coppia</button>
+    </section>
+
+    <footer id="foot" hidden>
+      <span id="who" class="small"></span>
+      <button id="b-logout" class="link" type="button">Esci</button>
+    </footer>
+  </main>
+
+  <script src="vendor/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
