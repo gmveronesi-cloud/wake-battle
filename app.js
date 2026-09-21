@@ -37,14 +37,25 @@
     clearInterval(countdownTimer); countdownTimer = null;
   }
 
-  function authErrorText(err) {
-    const m = (err && err.message ? err.message : '').toLowerCase();
-    if (err && err.status === 429 || m.includes('rate limit') || m.includes('security purposes'))
-      return 'Troppe richieste: aspetta un minuto e riprova.';
-    if (m.includes('expired') || m.includes('invalid') || m.includes('otp'))
-      return 'Codice errato o scaduto. Riprova o fatti mandare un nuovo codice.';
-    if (m.includes('email')) return 'Email non valida.';
-    return 'Qualcosa non ha funzionato. Controlla la connessione e riprova.';
+  // stage: 'send' (invio codice) oppure 'verify' (controllo codice)
+  function authErrorText(err, stage) {
+    const raw = err && err.message ? err.message : '';
+    const m = raw.toLowerCase();
+    const code = (err && err.code ? String(err.code) : '').toLowerCase();
+    let text;
+    if ((err && err.status === 429) || m.includes('rate limit') || m.includes('security purposes'))
+      text = 'Troppe richieste: aspetta un minuto e riprova.';
+    else if (m.includes('sending') || m.includes('smtp') || code.includes('email_send'))
+      text = 'Il server non è riuscito a spedire l\'email (impostazioni SMTP).';
+    else if (stage === 'verify' && (m.includes('expired') || m.includes('invalid') || code.includes('otp')))
+      text = 'Codice errato o scaduto. Riprova o fatti mandare un nuovo codice.';
+    else if (stage === 'send' && (m.includes('invalid') || code.includes('email_address')))
+      text = 'Indirizzo email non accettato.';
+    else if (m.includes('failed to fetch') || m.includes('network'))
+      text = 'Nessuna connessione con il server. Riprova.';
+    else
+      text = 'Qualcosa non ha funzionato.';
+    return raw ? text + ' [' + raw + ']' : text;
   }
 
   const JOIN_ERRORS = {
@@ -97,7 +108,7 @@
     busy(ev.submitter || $('f-email').querySelector('button'), async () => {
       msg('');
       const { error } = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
-      if (error) { msg(authErrorText(error)); return; }
+      if (error) { msg(authErrorText(error, 'send')); return; }
       pendingEmail = email;
       $('otp-email').textContent = email;
       $('otp').value = '';
@@ -117,13 +128,13 @@
     busy($('f-otp').querySelector('button'), async () => {
       msg('');
       const { error } = await sb.auth.verifyOtp({ email: pendingEmail, token, type: 'email' });
-      if (error) { msg(authErrorText(error)); return; }
+      if (error) { msg(authErrorText(error, 'verify')); return; }
       await refresh();
     });
   });
   $('b-resend').addEventListener('click', (ev) => busy(ev.currentTarget, async () => {
     const { error } = await sb.auth.signInWithOtp({ email: pendingEmail, options: { shouldCreateUser: true } });
-    msg(error ? authErrorText(error) : 'Nuovo codice inviato.', !error);
+    msg(error ? authErrorText(error, 'send') : 'Nuovo codice inviato.', !error);
   }));
   $('b-change-email').addEventListener('click', () => { msg(''); show('v-email'); });
 
