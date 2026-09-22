@@ -16,17 +16,22 @@ Le regole di gioco sono SOLO in docs/DECISIONI.md (prevale su tutto): qui non ri
 | Memoria | ✓ | eseguito | ✓ |
 | Numeri in ordine | ✓ | eseguito | ✓ |
 | Colore della parola | ✓ (v7) | 06 eseguito; **sql/07_refactor_giochi.sql** ancora da eseguire (facoltativo, vedi sotto) | ✓ (già attivata da Gianmarco col 06) |
-| Trova l'intruso | da fare | — | — |
+| Trova l'intruso | ✓ (v8) | **sql/08_intruso.sql** da eseguire | da attivare |
 | Riflessi | da fare | — | — |
 | Anagramma | da fare | — | — |
 | QR/barcode, luce, caccia ai colori, occhi aperti, trova l'oggetto | da fare | — | — |
 | Esercizi (video) | da fare | — | — |
 
-**PROSSIMO passo (nuova chat): Trova l'intruso** (file sql/08_..., ui_test_08, test_08, versione v8).
+**PROSSIMO passo (nuova chat): Riflessi** (file sql/09_..., ui_test_09, test_09, versione v9).
 
 ## Da fare ora (Gianmarco)
 Colore della parola è già attivo nella sfida (06 eseguito e attivato prima del refactor). Resta solo, quando vuoi, facoltativo:
 1. Eseguire `sql/07_refactor_giochi.sql` in Supabase: sostituisce wb_game_params/wb_check_answer con lo stesso comportamento del 06, solo riorganizzato per gioco. Non serve riprovare in beta né toccare game_live: il gioco resta attivo come già impostato, nessun'altra azione richiesta.
+
+Nuovo, da fare per Trova l'intruso:
+1. Eseguire `sql/08_intruso.sql` in Supabase (richiede 01..07 già eseguiti; se il 07 non è ancora stato eseguito, eseguirlo prima).
+2. Provare "Trova l'intruso" in beta.
+3. Quando va bene, attivarlo nella sfida vera con: `update public.challenge_types set enabled = true, game_live = true where code = 'intruso';`
 
 ## Refactor 22/09: un file SQL a parte per gioco
 Da sql/07 in poi, wb_game_params/wb_check_answer sono dispatcher: ogni gioco ha le sue funzioni private (wb_gp_<gioco>, wb_ca_<gioco>) in un file a sé. Un gioco nuovo non ricopia più le funzioni dei giochi vecchi — solo una riga in più in ciascun dispatcher. Comportamento identico al 06, verificato dai test (dettagli in STORICO.md).
@@ -40,8 +45,8 @@ Da sql/07 in poi, wb_game_params/wb_check_answer sono dispatcher: ogni gioco ha 
 
 ## Test (cartella `test/`)
 - Avvio: `sh test/setup.sh && sh test/tutti.sh` (~3 min).
-- SQL: test_02 (83), test_03 (63, DB senza 04), test_04 (53, rilanciato anche dopo 05/06/07), test_05 (45, rilanciato dopo 06/07), test_06 (61, rilanciato dopo 07); run.sh. prep_db.sh carica 01..03 + tutti i sql/0N_… presenti (`senza04` si ferma al 03). Boilerplate comune (connessione, orologio finto, ruoli, rpc/jrpc, contatori) in test/_lib.py.
-- UI: ui_test (33), ui_test_03 (43), ui_test_04 (34), ui_test_05 (27), ui_test_06 (32); tutti.sh prende da solo ogni ui_test_0N.js.
+- SQL: test_02 (83), test_03 (63, DB senza 04), test_04 (53, rilanciato anche dopo 05/06/07/08), test_05 (45, rilanciato dopo 06/07/08), test_06 (61, rilanciato dopo 07/08), test_08 (Trova l'intruso); run.sh. prep_db.sh carica 01..03 + tutti i sql/0N_… presenti (`senza04` si ferma al 03). Boilerplate comune (connessione, orologio finto, ruoli, rpc/jrpc, contatori) in test/_lib.py.
+- UI: ui_test (33), ui_test_03 (43), ui_test_04 (34), ui_test_05 (27), ui_test_06 (32), ui_test_08; tutti.sh prende da solo ogni ui_test_0N.js.
 - Orologio finto: wb_now legge 'wb.fake_now'.
 
 ## Poi
