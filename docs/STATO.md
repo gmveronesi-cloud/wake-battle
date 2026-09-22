@@ -15,7 +15,7 @@ Le regole di gioco sono SOLO in docs/DECISIONI.md (prevale su tutto): qui non ri
 |---|---|---|---|
 | Memoria | ✓ | eseguito | ✓ |
 | Numeri in ordine | ✓ | eseguito | ✓ |
-| Colore della parola | ✓ (v7) | **sql/07_refactor_giochi.sql** (sostituisce il 06: stesso comportamento, vedi sotto) | da attivare |
+| Colore della parola | ✓ (v7) | 06 eseguito; **sql/07_refactor_giochi.sql** ancora da eseguire (facoltativo, vedi sotto) | ✓ (già attivata da Gianmarco col 06) |
 | Trova l'intruso | da fare | — | — |
 | Riflessi | da fare | — | — |
 | Anagramma | da fare | — | — |
@@ -25,9 +25,8 @@ Le regole di gioco sono SOLO in docs/DECISIONI.md (prevale su tutto): qui non ri
 **PROSSIMO passo (nuova chat): Trova l'intruso** (file sql/08_..., ui_test_08, test_08, versione v8).
 
 ## Da fare ora (Gianmarco)
-1. Eseguire `sql/07_refactor_giochi.sql` in Supabase (sostituisce wb_game_params/wb_check_answer con lo stesso comportamento del 06, riorganizzato per gioco; non serve eseguire il 06 se non l'hai già fatto).
-2. Provare "Colore della parola" in beta.
-3. Attivare: `update public.challenge_types set game_live = true where code = 'colore_parola';` (false per tornare al "Fatto").
+Colore della parola è già attivo nella sfida (06 eseguito e attivato prima del refactor). Resta solo, quando vuoi, facoltativo:
+1. Eseguire `sql/07_refactor_giochi.sql` in Supabase: sostituisce wb_game_params/wb_check_answer con lo stesso comportamento del 06, solo riorganizzato per gioco. Non serve riprovare in beta né toccare game_live: il gioco resta attivo come già impostato, nessun'altra azione richiesta.
 
 ## Refactor 22/09: un file SQL a parte per gioco
 Da sql/07 in poi, wb_game_params/wb_check_answer sono dispatcher: ogni gioco ha le sue funzioni private (wb_gp_<gioco>, wb_ca_<gioco>) in un file a sé. Un gioco nuovo non ricopia più le funzioni dei giochi vecchi — solo una riga in più in ciascun dispatcher. Comportamento identico al 06, verificato dai test (dettagli in STORICO.md).
