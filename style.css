@@ -146,3 +146,15 @@ button.game-start { font-size: 22px; padding: 20px; background: var(--ok); color
 .cp-key { background: #eef0f4; color: #000; font-size: 18px; font-weight: 700; padding: 18px 4px; letter-spacing: 0.02em; }
 .cp-key:disabled { opacity: 1; }
 .cp-key.cp-wrong { background: var(--danger); color: #000; }
+
+/* Riflessi (v10) — classi rf-*, niente nomi globali */
+.rf-dots { display: flex; justify-content: center; gap: 8px; margin: 0 0 10px; }
+.rf-dots span { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--line); }
+.rf-dots span.done { background: var(--ok); border-color: var(--ok); }
+.rf-dots span.now { border-color: var(--accent); }
+.rf-box { aspect-ratio: 16 / 9; max-width: 420px; margin: 0 auto; display: flex; align-items: center;
+  justify-content: center; font-size: 28px; font-weight: 800; color: #fff; border-radius: 16px; user-select: none; }
+.rf-rosso { background: var(--danger); }
+.rf-verde { background: var(--ok); color: #06231a; }
+.rf-ok { background: var(--ok); color: #06231a; opacity: 0.5; }
+.rf-wrong { background: var(--danger); }

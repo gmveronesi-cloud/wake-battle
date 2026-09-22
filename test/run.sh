@@ -59,3 +59,14 @@ if [ -f sql/09_rimuovi_intruso.sql ]; then
   echo "--- 09 rilanciato due volte: nessun errore ---"
   $P -d wb -f sql/09_rimuovi_intruso.sql && echo ok
 fi
+if [ -f sql/10_riflessi.sql ]; then
+  L="$P -d wb -f sql/03_giochi.sql -f sql/04_memoria_round.sql -f sql/05_numeri.sql -f sql/06_colore_parola.sql -f sql/07_refactor_giochi.sql -f sql/08_intruso.sql -f sql/09_rimuovi_intruso.sql -f sql/10_riflessi.sql"
+  echo "--- 02 ancora valido dopo 10 ---";  reset_db; $L; python3 test/test_02.py
+  echo "--- 04 (Memoria) ancora valido dopo 10 ---"; reset_db; $L; python3 test/test_04.py
+  echo "--- 05 (Numeri) ancora valido dopo 10 ---"; reset_db; $L; python3 test/test_05.py
+  echo "--- 06 (Colore della parola) ancora valido dopo 10 ---"; reset_db; $L; python3 test/test_06.py
+  echo "--- 09 (rimozione intruso) ancora valido dopo 10 ---"; reset_db; $L; python3 test/test_09.py
+  echo "--- test 10 (Riflessi) ---"; reset_db; $L; python3 test/test_10.py
+  echo "--- 10 rilanciato due volte: nessun errore ---"
+  $P -d wb -f sql/10_riflessi.sql && echo ok
+fi

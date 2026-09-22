@@ -16,14 +16,20 @@ Le regole di gioco sono SOLO in docs/DECISIONI.md (prevale su tutto): qui non ri
 | Memoria | ✓ | eseguito | ✓ |
 | Numeri in ordine | ✓ | eseguito | ✓ |
 | Colore della parola | ✓ (v7) | 06 eseguito; **sql/07_refactor_giochi.sql** ancora da eseguire (facoltativo, vedi sotto) | ✓ (già attivata da Gianmarco col 06) |
-| Riflessi | da fare | — | — |
+| Riflessi | ✓ (v10) | **sql/10_riflessi.sql** da eseguire | da attivare dopo la prova in beta |
 | Anagramma | da fare | — | — |
 | QR/barcode, luce, caccia ai colori, occhi aperti, trova l'oggetto | da fare | — | — |
 | Esercizi (video) | da fare | — | — |
 
-**PROSSIMO passo (nuova chat): Riflessi** (file sql/10_..., ui_test_10, test_10, versione v10).
+**PROSSIMO passo (nuova chat): Anagramma** (file sql/11_..., ui_test_11, test_11, versione v11).
 
 ## Da fare ora (Gianmarco)
+Riflessi (nuovo):
+1. Eseguire `sql/10_riflessi.sql` in Supabase (richiede 01..09 già eseguiti).
+2. Provare in beta il gioco "Riflessi": riquadro rosso "ASPETTA…", tocca appena diventa verde "TOCCA!", 5 volte di fila; se tocchi mentre è ancora rosso è un anticipo e quel turno si ripete (contato negli "errori" a fine prova).
+3. Se va bene, attivare nella sfida vera con:
+   `update public.challenge_types set enabled = true, game_live = true where code = 'riflessi';`
+
 Colore della parola è già attivo nella sfida (06 eseguito e attivato prima del refactor). Resta solo, quando vuoi, facoltativo:
 1. Eseguire `sql/07_refactor_giochi.sql` in Supabase: sostituisce wb_game_params/wb_check_answer con lo stesso comportamento del 06, solo riorganizzato per gioco. Non serve riprovare in beta né toccare game_live: il gioco resta attivo come già impostato, nessun'altra azione richiesta.
 
@@ -42,8 +48,8 @@ Da sql/07 in poi, wb_game_params/wb_check_answer sono dispatcher: ogni gioco ha 
 
 ## Test (cartella `test/`)
 - Avvio: `sh test/setup.sh && sh test/tutti.sh` (~3 min).
-- SQL: test_02 (83), test_03 (63, DB senza 04), test_04 (53, rilanciato anche dopo 05/06/07/09), test_05 (45, rilanciato dopo 06/07/09), test_06 (61, rilanciato dopo 07/09), test_09 (rimozione Trova l'intruso); run.sh. prep_db.sh carica 01..03 + tutti i sql/0N_… presenti (`senza04` si ferma al 03). Boilerplate comune (connessione, orologio finto, ruoli, rpc/jrpc, contatori) in test/_lib.py.
-- UI: ui_test (33), ui_test_03 (43), ui_test_04 (34), ui_test_05 (27), ui_test_06 (32); tutti.sh prende da solo ogni ui_test_0N.js.
+- SQL: test_02 (83), test_03 (63, DB senza 04), test_04 (53, rilanciato anche dopo 05/06/07/09/10), test_05 (45, rilanciato dopo 06/07/09/10), test_06 (61, rilanciato dopo 07/09/10), test_09 (11, rimozione Trova l'intruso, rilanciato dopo 10), test_10 (57, Riflessi); run.sh. prep_db.sh carica 01..03 + tutti i sql/0N_… presenti (`senza04` si ferma al 03). Boilerplate comune (connessione, orologio finto, ruoli, rpc/jrpc, contatori) in test/_lib.py.
+- UI: ui_test (33), ui_test_03 (43), ui_test_04 (34), ui_test_05 (27), ui_test_06 (32), ui_test_10 (23); tutti.sh prende da solo ogni ui_test_0N.js.
 - Orologio finto: wb_now legge 'wb.fake_now'.
 
 ## Poi
