@@ -146,15 +146,3 @@ button.game-start { font-size: 22px; padding: 20px; background: var(--ok); color
 .cp-key { background: #eef0f4; color: #000; font-size: 18px; font-weight: 700; padding: 18px 4px; letter-spacing: 0.02em; }
 .cp-key:disabled { opacity: 1; }
 .cp-key.cp-wrong { background: var(--danger); color: #000; }
-
-/* Trova l'intruso (v8) — classi int-*, niente nomi globali */
-.int-dots { display: flex; justify-content: center; gap: 8px; margin: 0 0 10px; }
-.int-dots span { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--line); }
-.int-dots span.int-ok { background: var(--ok); border-color: var(--ok); }
-.int-dots span.int-now { border-color: var(--accent); }
-.int-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 320px; margin: 0 auto; }
-.int-cell { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 40px;
-  background: var(--bg); border: 1px solid var(--line); border-radius: 14px; color: inherit; padding: 0; }
-.int-cell.int-copri { border-style: dashed; }
-.int-cell.int-copri:disabled { opacity: 0.3; }
-.int-cell.wrong { background: var(--danger); border-color: var(--danger); transition: none; }
