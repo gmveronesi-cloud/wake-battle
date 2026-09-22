@@ -16,17 +16,17 @@ Le regole di gioco sono SOLO in docs/DECISIONI.md (prevale su tutto): qui non ri
 | Memoria | ✓ | eseguito | ✓ |
 | Numeri in ordine | ✓ | eseguito | ✓ |
 | Colore della parola | ✓ (v7) | 06 eseguito; **sql/07_refactor_giochi.sql** ancora da eseguire (facoltativo, vedi sotto) | ✓ (già attivata da Gianmarco col 06) |
-| Riflessi | ✓ (v10) | **sql/10_riflessi.sql** da eseguire | da attivare dopo la prova in beta |
+| Riflessi | ✓ (v11, "Babbo/Schiacciami") | 10 eseguito (versione vecchia, superata); **sql/11_riflessi_babbo.sql** da eseguire | da attivare dopo la prova in beta |
 | Anagramma | da fare | — | — |
 | QR/barcode, luce, caccia ai colori, occhi aperti, trova l'oggetto | da fare | — | — |
 | Esercizi (video) | da fare | — | — |
 
-**PROSSIMO passo (nuova chat): Anagramma** (file sql/11_..., ui_test_11, test_11, versione v11).
+**PROSSIMO passo (nuova chat): Anagramma** (file sql/12_..., ui_test_12, test_12, versione v12).
 
 ## Da fare ora (Gianmarco)
-Riflessi (nuovo):
-1. Eseguire `sql/10_riflessi.sql` in Supabase (richiede 01..09 già eseguiti).
-2. Provare in beta il gioco "Riflessi": riquadro rosso "ASPETTA…", tocca appena diventa verde "TOCCA!", 5 volte di fila; se tocchi mentre è ancora rosso è un anticipo e quel turno si ripete (contato negli "errori" a fine prova).
+Riflessi (a Gianmarco non piaceva la prima versione, cambiata):
+1. Eseguire `sql/11_riflessi_babbo.sql` in Supabase (richiede 01..10 già eseguiti, incluso il 10 che hai già lanciato: non fa danno, la nuova versione lo sostituisce).
+2. Provare in beta il gioco "Riflessi": dopo un'attesa compaiono due riquadri uguali per meno di un secondo, "BABBO" e "SCHIACCIAMI!" (posizione che si alterna a ogni round), poi restano al loro posto ma vuoti. Tocca "SCHIACCIAMI!" per andare avanti; se tocchi "BABBO" si riparte dal round 1. 5 round di fila per finire.
 3. Se va bene, attivare nella sfida vera con:
    `update public.challenge_types set enabled = true, game_live = true where code = 'riflessi';`
 
@@ -48,8 +48,8 @@ Da sql/07 in poi, wb_game_params/wb_check_answer sono dispatcher: ogni gioco ha 
 
 ## Test (cartella `test/`)
 - Avvio: `sh test/setup.sh && sh test/tutti.sh` (~3 min).
-- SQL: test_02 (83), test_03 (63, DB senza 04), test_04 (53, rilanciato anche dopo 05/06/07/09/10), test_05 (45, rilanciato dopo 06/07/09/10), test_06 (61, rilanciato dopo 07/09/10), test_09 (11, rimozione Trova l'intruso, rilanciato dopo 10), test_10 (57, Riflessi); run.sh. prep_db.sh carica 01..03 + tutti i sql/0N_… presenti (`senza04` si ferma al 03). Boilerplate comune (connessione, orologio finto, ruoli, rpc/jrpc, contatori) in test/_lib.py.
-- UI: ui_test (33), ui_test_03 (43), ui_test_04 (34), ui_test_05 (27), ui_test_06 (32), ui_test_10 (23); tutti.sh prende da solo ogni ui_test_0N.js.
+- SQL: test_02 (83), test_03 (63, DB senza 04), test_04 (53, rilanciato anche dopo 05/06/07/09/11), test_05 (45, rilanciato dopo 06/07/09/11), test_06 (61, rilanciato dopo 07/09/11), test_09 (11, rimozione Trova l'intruso, rilanciato dopo 11), test_11 (46, Riflessi "Babbo/Schiacciami"); run.sh. prep_db.sh carica 01..03 + tutti i sql/0N_… presenti (`senza04` si ferma al 03). Boilerplate comune (connessione, orologio finto, ruoli, rpc/jrpc, contatori) in test/_lib.py. test_10.py/ui_test_10.js (prima versione di Riflessi) eliminati: sostituiti dall'11, stesso trattamento riservato a test_08/ui_test_08 quando è sparito Trova l'intruso.
+- UI: ui_test (33), ui_test_03 (43), ui_test_04 (34), ui_test_05 (27), ui_test_06 (32), ui_test_11 (22, Riflessi "Babbo/Schiacciami"); tutti.sh prende da solo ogni ui_test_0N.js.
 - Orologio finto: wb_now legge 'wb.fake_now'.
 
 ## Poi
