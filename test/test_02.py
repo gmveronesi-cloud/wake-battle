@@ -1,55 +1,5 @@
-"""Test del passo 2 su Postgres locale che simula Supabase.
-Orologio del server simulato: wb_now() legge 'wb.fake_now' (solo nei test)."""
-import json, sys, psycopg2
-
-conn = psycopg2.connect(host="/tmp", port=5433, user="postgres", dbname="wb")
-conn.autocommit = True
-cur = conn.cursor()
-fails = 0
-passes = 0
-
-# --- solo test: orologio finto --------------------------------------------
-cur.execute("""
-create or replace function public.wb_now() returns timestamptz
-language sql stable set search_path = '' as
-$$ select coalesce(nullif(current_setting('wb.fake_now', true), '')::timestamptz, now()) $$;
-""")
-
-def clock(ts):
-    cur.execute("select set_config('wb.fake_now', %s, false)", (ts + "+02",))
-
-def as_user(uid):
-    cur.execute("reset role")
-    cur.execute("select set_config('request.jwt.claim.sub', %s, false)", (uid or "",))
-    cur.execute("set role " + ("authenticated" if uid else "anon"))
-
-def admin():
-    cur.execute("reset role")
-
-def rpc(fn, *args):
-    ph = ",".join(["%s"] * len(args))
-    cur.execute(f"select public.{fn}({ph})", args)
-    r = cur.fetchone()[0]
-    return r if not isinstance(r, str) else json.loads(r)
-
-def check(label, got, exp):
-    global fails, passes
-    ok = got == exp
-    if ok:
-        passes += 1
-    else:
-        fails += 1
-        print(f"FAIL {label}: atteso {exp!r}, ottenuto {got!r}")
-
-def expect_error(label, sql, args=()):
-    global fails, passes
-    try:
-        cur.execute(sql, args)
-        fails += 1
-        print(f"FAIL {label}: nessun errore")
-    except psycopg2.Error as e:
-        passes += 1
-        conn.rollback() if not conn.autocommit else None
+"""Test del passo 2 su Postgres locale che simula Supabase."""
+from _lib import admin, as_user, check, clock, cur, expect_error, report, rpc
 
 # --- utenti e coppia -------------------------------------------------------
 admin()
@@ -246,6 +196,4 @@ as_user(None)
 expect_error("anonimo non chiama get_today", "select public.get_today()")
 expect_error("anonimo non chiama complete", "select public.complete_challenge()")
 
-admin()
-print(f"\n{passes} controlli superati, {fails} falliti")
-sys.exit(1 if fails else 0)
+report()

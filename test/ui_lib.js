@@ -6,9 +6,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-// file web: cartella web/ (vecchia struttura) oppure radice del repo GitHub
-const WEB = fs.existsSync(path.join(__dirname, '..', 'web', 'index.html'))
-  ? path.join(__dirname, '..', 'web') : path.join(__dirname, '..');
+const WEB = path.join(__dirname, '..');
 const SHOTS = path.join(__dirname, 'shots');
 fs.mkdirSync(SHOTS, { recursive: true });
 const SUPA = 'https://rxxqdseojllcniowrzxm.supabase.co';

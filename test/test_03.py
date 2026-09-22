@@ -1,48 +1,8 @@
 """Test del passo 3.1 (struttura giochi + Memoria) su Postgres locale che simula Supabase.
-Richiede DB con 00 + 01 + 02 + 03 caricati. Orologio simulato come in test_02."""
-import json, sys, psycopg2
+Richiede DB con 00 + 01 + 02 + 03 caricati."""
+import json
 
-conn = psycopg2.connect(host="/tmp", port=5433, user="postgres", dbname="wb")
-conn.autocommit = True
-cur = conn.cursor()
-fails = passes = 0
-
-cur.execute("""
-create or replace function public.wb_now() returns timestamptz
-language sql stable set search_path = '' as
-$$ select coalesce(nullif(current_setting('wb.fake_now', true), '')::timestamptz, now()) $$;
-""")
-
-def clock(ts): cur.execute("select set_config('wb.fake_now', %s, false)", (ts + "+02",))
-def as_user(uid):
-    cur.execute("reset role")
-    cur.execute("select set_config('request.jwt.claim.sub', %s, false)", (uid or "",))
-    cur.execute("set role " + ("authenticated" if uid else "anon"))
-def admin(): cur.execute("reset role")
-def rpc(fn, *args):
-    ph = ",".join(["%s"] * len(args))
-    cur.execute(f"select public.{fn}({ph})", [json.dumps(a) if isinstance(a, (dict, list)) and fn in JSONARGS else a for a in args])
-    r = cur.fetchone()[0]
-    return r if not isinstance(r, str) else json.loads(r)
-JSONARGS = {"complete_game", "beta_check"}
-def jrpc(fn, *args):
-    """rpc con argomenti jsonb espliciti"""
-    casts = {"complete_game": ["jsonb"], "beta_check": ["text", "jsonb", "jsonb"]}[fn]
-    ph = ",".join(f"%s::{c}" for c in casts)
-    vals = [a if c == "text" else json.dumps(a) for a, c in zip(args, casts)]
-    cur.execute(f"select public.{fn}({ph})", vals)
-    return cur.fetchone()[0]
-def check(label, got, exp):
-    global fails, passes
-    if got == exp: passes += 1
-    else:
-        fails += 1; print(f"FAIL {label}: atteso {exp!r}, ottenuto {got!r}")
-def expect_error(label, sql, args=()):
-    global fails, passes
-    try:
-        cur.execute(sql, args); fails += 1; print(f"FAIL {label}: nessun errore")
-    except psycopg2.Error:
-        passes += 1
+from _lib import admin, as_user, check, clock, cur, expect_error, jrpc, report, rpc
 
 # --- struttura -----------------------------------------------------------
 admin()
@@ -180,6 +140,4 @@ as_user(None)
 for f in ["beta_list()", "beta_start('memoria')", "beta_check('memoria', '{}', '{}')", "complete_game('{}')", "complete_challenge()"]:
     expect_error(f"anonimo non chiama {f}", f"select public.{f}")
 
-admin()
-print(f"\n{passes} controlli superati, {fails} falliti")
-sys.exit(1 if fails else 0)
+report()

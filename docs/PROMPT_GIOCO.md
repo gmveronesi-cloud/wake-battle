@@ -10,7 +10,7 @@ Avvio: leggi SOLO docs/STATO.md e docs/DECISIONI.md (DECISIONI prevale su tutto)
 
 Regole di lavoro:
 - Se in DECISIONI mancano regole di [GIOCO] (dimensioni, tempi, errori, verifica sul server), chiedimele TUTTE in una volta con una proposta per ognuna. Se ci sono già, parti subito.
-- SQL in un file NUOVO col numero successivo in sql/; non toccare quelli già eseguiti. Se sostituisci wb_game_params / wb_check_answer, tieni dentro TUTTI i giochi già fatti, mai NULL.
+- SQL in un file NUOVO col numero successivo in sql/; non toccare quelli già eseguiti. Dal 07 in poi wb_game_params/wb_check_answer sono dispatcher: aggiungi solo le tue due funzioni wb_gp_<gioco>/wb_ca_<gioco> + una riga if in ciascun dispatcher (copiale dal file più recente e aggiungi la riga). Non ricopiare le funzioni dei giochi già fatti. Mai NULL.
 - Gioco in games.js (WBGames.mount → {destroy, retry}), uguale in beta e nella sfida.
 - Test nuovi: test/test_0N.py (in run.sh) + test/ui_test_0N.js. sh test/tutti.sh una volta alla fine. Screenshot tutti in un'unica immagine.
 - Aumenta ?v= in index.html e beta.html e la versione alla riga 2 di app.js.
