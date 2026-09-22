@@ -1,5 +1,5 @@
 'use strict';
-// Wake Battle — giochi (v8). Usato sia dall'app (sfida vera) sia da beta.html (prova).
+// Wake Battle — giochi (v10). Usato sia dall'app (sfida vera) sia da beta.html (prova).
 // Ogni gioco riceve i parametri generati dal server e, a fine partita, chiama
 // onDone(risposta): la risposta viene poi controllata dal server.
 // API: WBGames.has(codice) · WBGames.mount(codice, contenitore, parametri, { onDone })
@@ -397,7 +397,118 @@
     };
   }
 
-  const GAMES = { memoria, numeri, colore_parola: coloreParola };
+  // ---------------------------------------------------------------------
+  // RIFLESSI (v10): riquadro rosso "ASPETTA…"; dopo un'attesa casuale del
+  // server diventa verde "TOCCA!" e va toccato. 5 volte di fila riuscite.
+  // Tocco mentre è ancora rosso (anticipo) → SOLO quel turno si ripete
+  // (consuma un'altra attesa dal flusso, il conteggio dei successi non
+  // cambia). Nessun timeout dopo il verde. Risposta:
+  // { inizio, usate, tempi: [5 tempi di reazione ms], errori } con
+  // usate = errori + 5 (errori = tocchi in anticipo).
+  // ---------------------------------------------------------------------
+  function riflessi(box, params, opts) {
+    const waits = params.attese || [];
+    const volte = Number(params.volte) || 5;
+    let next = 0;    // prossima attesa da consumare
+    let start = 0;   // indice di inizio del tentativo in corso
+    let done = 0;    // successi nel tentativo in corso
+    let errori = 0;  // anticipi nel tentativo in corso
+    let times = [];  // tempi di reazione dei successi
+    let timers = [];
+    let dead = false;
+    const later = (fn, ms) => { const t = setTimeout(() => { if (!dead) fn(); }, ms); timers.push(t); };
+    const clear = () => { timers.forEach(clearTimeout); timers = []; };
+
+    function intro() {
+      box.replaceChildren();
+      box.dataset.phase = 'intro';
+      box.appendChild(el('p', 'Il riquadro è rosso: aspetta. Appena diventa verde toccalo, ' + volte +
+        ' volte di fila. Se lo tocchi mentre è ancora rosso è un anticipo: quel turno si ripete.', 'hint'));
+      const b = el('button', 'Inizia', 'game-start');
+      b.type = 'button';
+      b.addEventListener('click', newGame);
+      box.appendChild(b);
+    }
+
+    function dots() {
+      const d = el('div', null, 'rf-dots');
+      for (let i = 0; i < volte; i++) d.appendChild(el('span', null, i < done ? 'done' : i === done ? 'now' : ''));
+      return d;
+    }
+
+    function newGame() {
+      clear();
+      start = next;
+      done = 0;
+      errori = 0;
+      times = [];
+      turn();
+    }
+
+    function turn() {
+      clear();
+      if (next >= waits.length) {
+        box.replaceChildren(el('p', 'Attese finite.', 'game-note bad'));
+        box.dataset.phase = 'finite';
+        return;
+      }
+      const wait = Number(waits[next++]) || 0;
+      box.replaceChildren();
+      box.dataset.phase = 'aspetta';
+      box.dataset.round = String(done + 1);
+      box.dataset.errori = String(errori);
+      box.appendChild(dots());
+      box.appendChild(el('p', 'Round ' + (done + 1) + ' di ' + volte + (errori ? ' · anticipi: ' + errori : ''), 'game-note'));
+      const target = el('div', 'ASPETTA…', 'rf-box rf-rosso');
+      box.appendChild(target);
+      let armed = false;
+      let tapped = false;
+      let shownAt = 0;
+      target.addEventListener('click', () => {
+        if (dead || tapped) return;
+        if (!armed) {
+          tapped = true;
+          errori++;
+          target.classList.remove('rf-rosso');
+          target.classList.add('rf-wrong');
+          target.textContent = 'Troppo presto!';
+          box.dataset.phase = 'errore';
+          later(turn, 500);
+          return;
+        }
+        tapped = true;
+        times.push(Math.round(performance.now() - shownAt));
+        done++;
+        if (done >= volte) {
+          box.dataset.phase = 'fine';
+          opts.onDone({ inizio: start, usate: next - start, tempi: times.slice(), errori });
+        } else {
+          target.classList.remove('rf-verde');
+          target.classList.add('rf-ok');
+          box.dataset.phase = 'ok';
+          later(turn, 500);
+        }
+      });
+      later(() => {
+        if (tapped) return;
+        armed = true;
+        shownAt = performance.now();
+        target.textContent = 'TOCCA!';
+        target.classList.remove('rf-rosso');
+        target.classList.add('rf-verde');
+        box.dataset.phase = 'tocca';
+      }, wait);
+    }
+
+    intro();
+    return {
+      destroy() { dead = true; clear(); box.replaceChildren(); delete box.dataset.phase; },
+      // il server ha rifiutato la risposta: nuovo tentativo (attese successive)
+      retry() { if (!dead) newGame(); },
+    };
+  }
+
+  const GAMES = { memoria, numeri, colore_parola: coloreParola, riflessi };
 
   window.WBGames = {
     has: (code) => Object.prototype.hasOwnProperty.call(GAMES, code),
