@@ -1,5 +1,5 @@
 'use strict';
-// Wake Battle — giochi (v4). Usato sia dall'app (sfida vera) sia da beta.html (prova).
+// Wake Battle — giochi (v5). Usato sia dall'app (sfida vera) sia da beta.html (prova).
 // Ogni gioco riceve i parametri generati dal server e, a fine partita, chiama
 // onDone(risposta): la risposta viene poi controllata dal server.
 // API: WBGames.has(codice) · WBGames.mount(codice, contenitore, parametri, { onDone })
@@ -175,7 +175,89 @@
     };
   }
 
-  const GAMES = { memoria };
+  // ---------------------------------------------------------------------
+  // NUMERI IN ORDINE (v5): griglia 5×5 con 1..25 in posizioni del server,
+  // coperta fino a "Inizia". Tocco giusto → casella grigia; tocco sbagliato
+  // → lampeggio rosso, nessuna penalità. Al 25 la risposta parte da sola:
+  // { tocchi: [posizione dell'1, del 2, ... del 25], errori }.
+  // ---------------------------------------------------------------------
+  function numeri(box, params, opts) {
+    const disp = params.disposizione || [];
+    const side = Number(params.lato) || 5;
+    const total = disp.length;
+    let timers = [];
+    let dead = false;
+    const clear = () => { timers.forEach(clearTimeout); timers = []; };
+
+    function intro() {
+      box.replaceChildren();
+      box.dataset.phase = 'intro';
+      box.appendChild(el('p', 'Tocca i numeri da 1 a ' + total + ' in ordine, il più in fretta possibile. ' +
+        'Un tocco sbagliato lampeggia di rosso: nessuna penalità, continua.', 'hint'));
+      const b = el('button', 'Inizia', 'game-start');
+      b.type = 'button';
+      b.addEventListener('click', play);
+      box.appendChild(b);
+    }
+
+    function play() {
+      clear();
+      let next = 1;
+      let errors = 0;
+      const taps = [];
+      box.replaceChildren();
+      box.dataset.phase = 'gioca';
+      box.dataset.prossimo = '1';
+      const note = el('p', 'Prossimo: 1', 'game-note');
+      box.appendChild(note);
+      const grid = el('div', null, 'num-grid');
+      grid.style.gridTemplateColumns = 'repeat(' + side + ', minmax(0, 1fr))';
+      const cells = disp.map((n, pos) => {
+        const b = el('button', String(n), 'num-cell');
+        b.type = 'button';
+        b.dataset.n = String(n);
+        b.addEventListener('click', () => {
+          if (dead || b.disabled || next > total) return;
+          if (n === next) {
+            b.disabled = true;
+            b.classList.remove('wrong');
+            b.classList.add('preso');
+            taps.push(pos);
+            next++;
+            box.dataset.prossimo = String(next);
+            if (next > total) {
+              cells.forEach((c) => { c.disabled = true; });
+              note.textContent = 'Controllo…' + (errors ? ' (errori: ' + errors + ')' : '');
+              box.dataset.phase = 'fine';
+              opts.onDone({ tocchi: taps.slice(), errori: errors });
+            } else {
+              note.textContent = 'Prossimo: ' + next;
+            }
+          } else {
+            errors++;
+            box.dataset.errori = String(errors);
+            b.classList.remove('wrong');
+            void b.offsetWidth; // fa ripartire il lampeggio
+            b.classList.add('wrong');
+            const t = setTimeout(() => b.classList.remove('wrong'), 300);
+            timers.push(t);
+          }
+        });
+        grid.appendChild(b);
+        return b;
+      });
+      box.appendChild(grid);
+    }
+
+    intro();
+    return {
+      destroy() { dead = true; clear(); box.replaceChildren(); delete box.dataset.phase; },
+      // il server ha rifiutato la risposta: stessa griglia, di nuovo da 1
+      retry() { if (!dead) play(); },
+    };
+  }
+
+  const GAMES = { memoria, numeri };
 
   window.WBGames = {
     has: (code) => Object.prototype.hasOwnProperty.call(GAMES, code),

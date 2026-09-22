@@ -125,3 +125,10 @@ button.game-start { font-size: 22px; padding: 20px; background: var(--ok); color
 .mem-dots span { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--line); }
 .mem-dots span.done { background: var(--ok); border-color: var(--ok); }
 .mem-dots span.now { border-color: var(--accent); }
+
+/* Numeri in ordine (v5) */
+.num-grid { display: grid; gap: 6px; width: 100%; max-width: 440px; margin: 0 auto; }
+.num-cell { aspect-ratio: 1; width: 100%; min-width: 0; padding: 0; font-size: 26px; font-weight: 700; background: var(--bg);
+  border: 1px solid var(--line); border-radius: 10px; color: inherit; transition: background .15s; }
+.num-cell.preso { opacity: 0.25; }
+.num-cell.wrong { background: var(--danger); border-color: var(--danger); transition: none; }

@@ -54,7 +54,7 @@ cur.execute("insert into public.couple_members (couple_id, user_id, joined_at) v
 
 # --- parametri ---------------------------------------------------------------
 clock("2026-09-20 10:00"); as_user(C)
-check("beta_list: solo memoria pronta", [g["codice"] for g in rpc("beta_list")["giochi"] if g["pronto"]], ["memoria"])
+check("beta_list: memoria pronta", "memoria" in [g["codice"] for g in rpc("beta_list")["giochi"] if g["pronto"]], True)
 g = rpc("beta_start", "memoria"); p = g["parametri"]
 check("beta_start ok", (g["ok"], g["nome"]), (True, "Memoria"))
 check("parametri: gioco, 5 round da 3, 3 s, 9 simboli",

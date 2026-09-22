@@ -1,5 +1,5 @@
 #!/bin/sh
-# DB pulito per il test UI: sim Supabase + 01 + 02 + 03 (+ 04 se presente) + orologio finto
+# DB pulito per il test UI: sim Supabase + 01 + 02 + 03 (+ 04, 05... se presenti) + orologio finto
 # Uso: sh test/prep_db.sh          (con 04)
 #      sh test/prep_db.sh senza04  (solo fino a 03)
 set -e
@@ -10,5 +10,5 @@ $P -d wb -f test/00_supabase_sim.sql
 $P -d wb -f sql/01_coppia.sql
 $P -d wb -f sql/02_sveglie_risultati.sql
 $P -d wb -f sql/03_giochi.sql
-if [ "$1" != "senza04" ] && [ -f sql/04_memoria_round.sql ]; then $P -d wb -f sql/04_memoria_round.sql; fi
+if [ "$1" != "senza04" ]; then for f in sql/0[4-9]_*.sql sql/[1-9][0-9]_*.sql; do [ -f "$f" ] && $P -d wb -f "$f"; done; fi
 $P -d wb -c "create or replace function public.wb_now() returns timestamptz language sql stable set search_path = '' as \$\$ select coalesce(nullif(current_setting('wb.fake_now', true), '')::timestamptz, now()) \$\$;"

@@ -1,5 +1,5 @@
 'use strict';
-// Wake Battle — pagina di prova dei giochi (v4). Non salva tempi né punti.
+// Wake Battle — pagina di prova dei giochi (v5). Non salva tempi né punti.
 
 (function () {
   const cfg = window.WB_CONFIG;
@@ -100,7 +100,8 @@
       $('b-result-main').textContent = 'Completato in ' + dur(secs);
       $('b-result-main').className = 'result win';
       const tries = answer && (answer.tentativi || (answer.tentativo != null ? answer.tentativo + 1 : 0));
-      $('b-result-sub').textContent = 'Risposta verificata dal server ✓' + (tries > 1 ? ' · tentativi: ' + tries : '');
+      $('b-result-sub').textContent = 'Risposta verificata dal server ✓' + (tries > 1 ? ' · tentativi: ' + tries : '') +
+        (answer && answer.errori ? ' · errori: ' + answer.errori : '');
     } else {
       $('b-result-main').textContent = 'Risposta non accettata';
       $('b-result-main').className = 'result lose';
