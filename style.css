@@ -132,3 +132,17 @@ button.game-start { font-size: 22px; padding: 20px; background: var(--ok); color
   border: 1px solid var(--line); border-radius: 10px; color: inherit; transition: background .15s; }
 .num-cell.preso { opacity: 0.25; }
 .num-cell.wrong { background: var(--danger); border-color: var(--danger); transition: none; }
+
+/* Colore della parola (v6) — classi cp-*, niente nomi globali */
+.cp-dots { display: flex; justify-content: center; gap: 6px; margin: 0 0 10px; }
+.cp-dots span { width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--line); }
+.cp-dots span.cp-ok { background: var(--ok); border-color: var(--ok); }
+.cp-dots span.cp-now { border-color: var(--accent); }
+.cp-word { text-align: center; font-size: 44px; font-weight: 800; letter-spacing: 0.02em; margin: 18px 0 22px;
+  min-height: 64px; overflow-wrap: anywhere; }
+.cp-ink0 { color: #ff4040; } .cp-ink1 { color: #4d8dff; } .cp-ink2 { color: #33d16a; }
+.cp-ink3 { color: #ffe033; } .cp-ink4 { color: #b86bff; } .cp-ink5 { color: #ff9020; }
+.cp-keys { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.cp-key { background: #eef0f4; color: #000; font-size: 18px; font-weight: 700; padding: 18px 4px; letter-spacing: 0.02em; }
+.cp-key:disabled { opacity: 1; }
+.cp-key.cp-wrong { background: var(--danger); color: #000; }

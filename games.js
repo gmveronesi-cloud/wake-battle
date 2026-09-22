@@ -1,5 +1,5 @@
 'use strict';
-// Wake Battle — giochi (v5). Usato sia dall'app (sfida vera) sia da beta.html (prova).
+// Wake Battle — giochi (v6). Usato sia dall'app (sfida vera) sia da beta.html (prova).
 // Ogni gioco riceve i parametri generati dal server e, a fine partita, chiama
 // onDone(risposta): la risposta viene poi controllata dal server.
 // API: WBGames.has(codice) · WBGames.mount(codice, contenitore, parametri, { onDone })
@@ -257,7 +257,122 @@
     };
   }
 
-  const GAMES = { memoria, numeri };
+  // ---------------------------------------------------------------------
+  // COLORE DELLA PAROLA (v6): 10 turni. Una parola-colore scritta con
+  // l'inchiostro di un altro colore: si tocca il colore dell'INCHIOSTRO
+  // (6 pulsanti col nome in nero, ordine fisso). Nessun limite per turno.
+  // Errore → lampeggio rosso e si riparte dal turno 1 con parole nuove
+  // (ogni tentativo usa la sequenza successiva del server).
+  // Risposta: { tentativo, risposte: [10 inchiostri], tentativi }.
+  // ---------------------------------------------------------------------
+  const COLORI = ['ROSSO', 'BLU', 'VERDE', 'GIALLO', 'VIOLA', 'ARANCIONE'];
+
+  function coloreParola(box, params, opts) {
+    const seqs = params.sequenze || [];
+    const turns = Number(params.turni) || 10;
+    let next = 0;       // prossima sequenza da usare
+    let k = 0;          // sequenza del tentativo in corso
+    let tries = 0;
+    let timers = [];
+    let dead = false;
+    const later = (fn, ms) => { const t = setTimeout(() => { if (!dead) fn(); }, ms); timers.push(t); };
+    const clear = () => { timers.forEach(clearTimeout); timers = []; };
+
+    function intro() {
+      box.replaceChildren();
+      box.dataset.phase = 'intro';
+      box.appendChild(el('p', turns + ' parole: tocca il colore dell\'INCHIOSTRO, non quello scritto. ' +
+        'Un errore fa ripartire dal turno 1 con parole nuove.', 'hint'));
+      const b = el('button', 'Inizia', 'game-start');
+      b.type = 'button';
+      b.addEventListener('click', newGame);
+      box.appendChild(b);
+    }
+
+    function newGame() {
+      clear();
+      if (next >= seqs.length) {
+        box.replaceChildren(el('p', 'Sequenze finite.', 'game-note bad'));
+        box.dataset.phase = 'finite';
+        return;
+      }
+      tries++;
+      k = next++;
+      const seq = seqs[k];
+      const answers = [];
+      let turn = 0;
+
+      box.replaceChildren();
+      box.dataset.phase = 'gioca';
+      box.dataset.tentativo = String(tries);
+      const dotsEl = el('div', null, 'cp-dots');
+      const dotEls = [];
+      for (let i = 0; i < turns; i++) { const d = el('span'); dotsEl.appendChild(d); dotEls.push(d); }
+      box.appendChild(dotsEl);
+      const note = el('p', '', 'game-note');
+      box.appendChild(note);
+      const word = el('div', '', 'cp-word');
+      box.appendChild(word);
+      const keys = el('div', null, 'cp-keys');
+      const keyEls = COLORI.map((name, i) => {
+        const b = el('button', name, 'cp-key');
+        b.type = 'button';
+        b.dataset.c = String(i);
+        b.addEventListener('click', () => tap(i, b));
+        keys.appendChild(b);
+        return b;
+      });
+      box.appendChild(keys);
+
+      function show() {
+        const [w, c] = seq[turn];
+        box.dataset.turno = String(turn + 1);
+        word.textContent = COLORI[w];
+        word.className = 'cp-word cp-ink' + c;
+        word.dataset.parola = String(w);
+        word.dataset.inchiostro = String(c);
+        note.textContent = 'Turno ' + (turn + 1) + ' di ' + turns + (tries > 1 ? ' · tentativo ' + tries : '');
+        note.className = 'game-note';
+        dotEls.forEach((d, i) => { d.className = i < turn ? 'cp-ok' : i === turn ? 'cp-now' : ''; });
+      }
+
+      function tap(i, b) {
+        if (dead || box.dataset.phase !== 'gioca') return;
+        if (i === seq[turn][1]) {
+          answers.push(i);
+          turn++;
+          if (turn >= turns) {
+            dotEls.forEach((d) => { d.className = 'cp-ok'; });
+            keyEls.forEach((x) => { x.disabled = true; });
+            note.textContent = 'Controllo…';
+            box.dataset.phase = 'fine';
+            opts.onDone({ tentativo: k, risposte: answers.slice(), tentativi: tries });
+          } else {
+            show();
+          }
+        } else {
+          box.dataset.phase = 'errore';
+          keyEls.forEach((x) => { x.disabled = true; });
+          b.classList.add('cp-wrong');
+          later(() => b.classList.remove('cp-wrong'), 300);
+          note.textContent = 'Sbagliato! Si riparte dal turno 1…';
+          note.className = 'game-note bad';
+          later(newGame, 900);
+        }
+      }
+
+      show();
+    }
+
+    intro();
+    return {
+      destroy() { dead = true; clear(); box.replaceChildren(); delete box.dataset.phase; },
+      // il server ha rifiutato la risposta: nuovo tentativo con parole nuove
+      retry() { if (!dead) newGame(); },
+    };
+  }
+
+  const GAMES = { memoria, numeri, colore_parola: coloreParola };
 
   window.WBGames = {
     has: (code) => Object.prototype.hasOwnProperty.call(GAMES, code),

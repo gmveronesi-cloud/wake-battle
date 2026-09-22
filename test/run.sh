@@ -31,3 +31,12 @@ if [ -f sql/05_numeri.sql ]; then
   echo "--- 05 rilanciato due volte: nessun errore ---"
   $P -d wb -f sql/05_numeri.sql && echo ok
 fi
+if [ -f sql/06_colore_parola.sql ]; then
+  L="$P -d wb -f sql/03_giochi.sql -f sql/04_memoria_round.sql -f sql/05_numeri.sql -f sql/06_colore_parola.sql"
+  echo "--- 02 ancora valido dopo 06 ---";  reset_db; $L; python3 test/test_02.py
+  echo "--- 04 (Memoria) ancora valido dopo 06 ---"; reset_db; $L; python3 test/test_04.py
+  echo "--- 05 (Numeri) ancora valido dopo 06 ---"; reset_db; $L; python3 test/test_05.py
+  echo "--- test 06 (Colore della parola) ---"; reset_db; $L; python3 test/test_06.py
+  echo "--- 06 rilanciato due volte: nessun errore ---"
+  $P -d wb -f sql/06_colore_parola.sql && echo ok
+fi
