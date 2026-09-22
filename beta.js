@@ -1,5 +1,5 @@
 'use strict';
-// Wake Battle — pagina di prova dei giochi (v6). Non salva tempi né punti.
+// Wake Battle — pagina di prova dei giochi (v7). Non salva tempi né punti.
 
 (function () {
   const cfg = window.WB_CONFIG;

@@ -44,15 +44,41 @@ async function sbaglia(page, sel) {
   const inkRgb = await page.$eval('#b-game .cp-word', (e) => getComputedStyle(e).color);
   const keyInk = await page.$eval(`#b-game .cp-key[data-c="${w0[0]}"]`, (e) => getComputedStyle(e).color);
   check('beta: parola colorata, pulsanti in nero', inkRgb !== 'rgb(0, 0, 0)' && keyInk === 'rgb(0, 0, 0)', [inkRgb, keyInk]);
+  const keyOrd = (sel) => page.$$eval(`${sel} .cp-key`, (ks) => ks.map((k) => Number(k.dataset.c)));
   const keys = await page.$$eval('#b-game .cp-key', (ks) => ks.map((k) => k.textContent));
-  check('beta: 6 pulsanti, ordine fisso', JSON.stringify(keys) === JSON.stringify(NOMI), keys);
+  check('beta: 6 pulsanti, tutti i colori una volta', JSON.stringify([...keys].sort()) === JSON.stringify([...NOMI].sort()), keys);
+  // ordine dei pulsanti: cambia a ogni turno ed è uguale per chi ha gli stessi parametri
+  const ordini = [await keyOrd('#b-game')];
+  check('beta: ordine a schermo = data-ordine', ordini[0].join(',') === (await attr(page, '#b-game', 'data-ordine')));
   const k0 = await page.locator('#b-game .cp-key').nth(0).boundingBox();
   const k1 = await page.locator('#b-game .cp-key').nth(1).boundingBox();
   const k2 = await page.locator('#b-game .cp-key').nth(2).boundingBox();
   check('beta: pulsanti su 2 colonne, alti ≥ 50 px', Math.abs(k0.y - k1.y) < 2 && k2.y > k0.y && k0.height >= 50 && k0.x + k0.width <= k1.x, [k0, k1]);
   check('beta: Turno 1 di 10', (await txt(page, '#b-game .game-note')) === 'Turno 1 di 10');
   await shot(page, '38_col_beta_turno1');
-  await giusti(page, '#b-game', 4);
+  for (let i = 0; i < 4; i++) { await giusti(page, '#b-game', 1); ordini.push(await keyOrd('#b-game')); }
+  check('beta: ordine pulsanti diverso a ogni turno', ordini.every((o, i) => i === 0 || o.join() !== ordini[i - 1].join()), ordini);
+  check('beta: ordini non tutti uguali all\'ordine base', ordini.some((o) => o.join() !== '0,1,2,3,4,5'), ordini);
+  const ctx2 = await browser.newContext();
+  const p2 = await ctx2.newPage();
+  await p2.goto('http://localhost:8765/beta.html').catch(() => {});
+  const ordiniB = await p2.evaluate((pp) => new Promise((res) => {
+    const s = document.createElement('script'); s.src = '/games.js';
+    s.onload = () => {
+      const box = document.createElement('div'); document.body.appendChild(box);
+      window.WBGames.mount('colore_parola', box, pp, { onDone() {} });
+      box.querySelector('.game-start').click();
+      const out = [];
+      for (let t = 0; t < 5; t++) {
+        out.push([...box.querySelectorAll('.cp-key')].map((k) => Number(k.dataset.c)));
+        box.querySelector(`.cp-key[data-c="${box.querySelector('.cp-word').dataset.inchiostro}"]`).click();
+      }
+      res(out);
+    };
+    document.head.appendChild(s);
+  }), P);
+  await ctx2.close();
+  check('beta: stessi parametri → stesso ordine (uguale per la coppia)', JSON.stringify(ordiniB) === JSON.stringify(ordini), [ordiniB, ordini]);
   check('beta: dopo 4 giusti turno 5', (await attr(page, '#b-game', 'data-turno')) === '5' &&
     (await page.locator('#b-game .cp-dots .cp-ok').count()) === 4 && (await txt(page, '#b-game .cp-word')) === NOMI[S[0][4][0]]);
   const wrongC = await sbaglia(page, '#b-game');

@@ -1,4 +1,4 @@
-# Wake Battle — Stato lavori (aggiornato 22/09/2026, notte — v6)
+# Wake Battle — Stato lavori (aggiornato 22/09/2026 — v7)
 
 ## Metodo di lavoro (dal 22/09/2026)
 - Una chat per gioco, aperta da https://claude.ai/code col repository gmveronesi-cloud/wake-battle collegato; prompt in docs/PROMPT_GIOCO.md.
@@ -14,13 +14,14 @@
 - App v5: games.js (numeri; classe casella fatta = `preso`, NON `done`: `button.done` è già usato in style.css), style.css (.num-grid/.num-cell, colonne minmax(0,1fr) sennò la griglia si allarga), beta.js (mostra "errori: N"), app.js riga 2 v5, index.html/beta.html ?v=5.
 - Attivato: `update public.challenge_types set game_live = true where code = 'numeri';` (false per tornare al "Fatto").
 
-## PROSSIMO: Passo 3.4 — Trova l'intruso (file sql/07_..., ui_test_07, test_07, versione v7)
+## PROSSIMO: Passo 3.4 — Trova l'intruso (file sql/07_..., ui_test_07, test_07, versione v8)
 
-## Passo 3.3 — Colore della parola (v6 pronta nel repo, 22/09 notte)
+## Passo 3.3 — Colore della parola (v7 pronta nel repo, 22/09)
 - Da fare (Gianmarco): eseguire `sql/06_colore_parola.sql` in Supabase, provare in beta, attivare: `update public.challenge_types set game_live = true where code = 'colore_parola';` (false per tornare al "Fatto").
 - Regole in DECISIONI.md (6 colori, 10 turni, errore → da capo con parole nuove, nessun limite per turno).
+- v7: ordine dei 6 pulsanti mescolato a ogni turno (keyOrder in games.js, deterministico dai parametri: uguale per la coppia, nessun SQL nuovo; data-ordine sul box per i test).
 - SQL 06: sostituisce solo wb_game_params e wb_check_answer, con dentro Numeri (05) + Memoria a round (04) + Memoria vecchia (03) + colore_parola. Mai NULL. Rilanciarlo non fa danni.
-- App v6: games.js (colore_parola; classi solo `cp-*`: cp-word, cp-ink0..5, cp-keys, cp-key, cp-wrong, cp-dots, cp-ok, cp-now), style.css, app.js riga 2 v6, index.html/beta.html ?v=6. beta.js invariato nel codice (mostra già "tentativi: N").
+- App v6→v7: games.js (colore_parola; classi solo `cp-*`: cp-word, cp-ink0..5, cp-keys, cp-key, cp-wrong, cp-dots, cp-ok, cp-now), style.css, app.js riga 2 v7, index.html/beta.html ?v=7. beta.js invariato nel codice (mostra già "tentativi: N").
 - test_05 ora accetta altri giochi pronti oltre a memoria e numeri.
 
 ## Passo 3.1b — Memoria a round (v4 online dal 22/09 01:45)
@@ -52,7 +53,7 @@
 ## Test (cartella `test/`)
 - Avvio: `sh test/setup.sh && sh test/tutti.sh` (~3 min).
 - SQL: test_02 (83), test_03 (63, DB senza 04), test_04 (53, rilanciato anche dopo 05 e 06), test_05 (45, rilanciato dopo il 06), test_06 (61); run.sh. prep_db.sh carica 01..03 + tutti i sql/04_… 05_… presenti (`senza04` si ferma al 03).
-- UI: ui_test (33), ui_test_03 (43), ui_test_04 (34), ui_test_05 (27), ui_test_06 (28); tutti.sh prende da solo ogni ui_test_0N.js.
+- UI: ui_test (33), ui_test_03 (43), ui_test_04 (34), ui_test_05 (27), ui_test_06 (32); tutti.sh prende da solo ogni ui_test_0N.js.
 - Orologio finto: wb_now legge 'wb.fake_now'.
 
 ## Poi

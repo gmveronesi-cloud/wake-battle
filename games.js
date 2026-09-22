@@ -1,5 +1,5 @@
 'use strict';
-// Wake Battle — giochi (v6). Usato sia dall'app (sfida vera) sia da beta.html (prova).
+// Wake Battle — giochi (v7). Usato sia dall'app (sfida vera) sia da beta.html (prova).
 // Ogni gioco riceve i parametri generati dal server e, a fine partita, chiama
 // onDone(risposta): la risposta viene poi controllata dal server.
 // API: WBGames.has(codice) · WBGames.mount(codice, contenitore, parametri, { onDone })
@@ -260,12 +260,33 @@
   // ---------------------------------------------------------------------
   // COLORE DELLA PAROLA (v6): 10 turni. Una parola-colore scritta con
   // l'inchiostro di un altro colore: si tocca il colore dell'INCHIOSTRO
-  // (6 pulsanti col nome in nero, ordine fisso). Nessun limite per turno.
+  // (6 pulsanti col nome in nero, in ordine diverso a ogni turno: ordine
+  // calcolato dai parametri del server, quindi uguale per la coppia).
+  // Nessun limite per turno.
   // Errore → lampeggio rosso e si riparte dal turno 1 con parole nuove
   // (ogni tentativo usa la sequenza successiva del server).
   // Risposta: { tentativo, risposte: [10 inchiostri], tentativi }.
   // ---------------------------------------------------------------------
   const COLORI = ['ROSSO', 'BLU', 'VERDE', 'GIALLO', 'VIOLA', 'ARANCIONE'];
+
+  // ordine dei pulsanti per il turno t del tentativo k: mescolato in modo
+  // deterministico dai parametri (stessi parametri → stesso ordine),
+  // mai uguale a quello del turno prima.
+  function keyOrder(seq, k, t, prev) {
+    let h = 2166136261 ^ (k * 131 + t * 7919);
+    const src = JSON.stringify(seq);
+    for (let i = 0; i < src.length; i++) h = Math.imul(h ^ src.charCodeAt(i), 16777619);
+    const rnd = () => {   // mulberry32
+      h = (h + 0x6D2B79F5) | 0;
+      let r = Math.imul(h ^ (h >>> 15), 1 | h);
+      r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
+      return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+    };
+    const o = COLORI.map((_, i) => i);
+    for (let i = o.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [o[i], o[j]] = [o[j], o[i]]; }
+    if (prev && o.join() === prev.join()) o.push(o.shift());
+    return o;
+  }
 
   function coloreParola(box, params, opts) {
     const seqs = params.sequenze || [];
@@ -324,8 +345,12 @@
       });
       box.appendChild(keys);
 
+      let order = null;
       function show() {
         const [w, c] = seq[turn];
+        order = keyOrder(seq, k, turn, order);
+        keys.replaceChildren(...order.map((i) => keyEls[i]));
+        box.dataset.ordine = order.join(',');
         box.dataset.turno = String(turn + 1);
         word.textContent = COLORI[w];
         word.className = 'cp-word cp-ink' + c;
