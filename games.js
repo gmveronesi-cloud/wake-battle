@@ -1,5 +1,5 @@
 'use strict';
-// Wake Battle — giochi (v10). Usato sia dall'app (sfida vera) sia da beta.html (prova).
+// Wake Battle — giochi (v11). Usato sia dall'app (sfida vera) sia da beta.html (prova).
 // Ogni gioco riceve i parametri generati dal server e, a fine partita, chiama
 // onDone(risposta): la risposta viene poi controllata dal server.
 // API: WBGames.has(codice) · WBGames.mount(codice, contenitore, parametri, { onDone })
@@ -398,22 +398,22 @@
   }
 
   // ---------------------------------------------------------------------
-  // RIFLESSI (v10): riquadro rosso "ASPETTA…"; dopo un'attesa casuale del
-  // server diventa verde "TOCCA!" e va toccato. 5 volte di fila riuscite.
-  // Tocco mentre è ancora rosso (anticipo) → SOLO quel turno si ripete
-  // (consuma un'altra attesa dal flusso, il conteggio dei successi non
-  // cambia). Nessun timeout dopo il verde. Risposta:
-  // { inizio, usate, tempi: [5 tempi di reazione ms], errori } con
-  // usate = errori + 5 (errori = tocchi in anticipo).
+  // RIFLESSI (v11): dopo un'attesa casuale del server compaiono due riquadri
+  // uguali affiancati, "BABBO" e "SCHIACCIAMI!" (posizione che si alterna a
+  // ogni round: pubblica, non serve dal server), per mostra_ms; poi si
+  // oscurano restando nella stessa posizione (vuoti ma cliccabili). Tocchi
+  // "SCHIACCIAMI!" → round successivo. Tocchi "BABBO" → si riparte dal
+  // round 1 con dati nuovi (come Colore della parola/Intruso). 5 round di
+  // fila per finire. Risposta: { tentativo, tentativi }.
   // ---------------------------------------------------------------------
   function riflessi(box, params, opts) {
-    const waits = params.attese || [];
-    const volte = Number(params.volte) || 5;
-    let next = 0;    // prossima attesa da consumare
-    let start = 0;   // indice di inizio del tentativo in corso
-    let done = 0;    // successi nel tentativo in corso
-    let errori = 0;  // anticipi nel tentativo in corso
-    let times = [];  // tempi di reazione dei successi
+    const seqs = params.sequenze || [];
+    const rounds = Number(params.round) || 5;
+    const showMs = Number(params.mostra_ms) || 400;
+    let next = 0;    // prossima sequenza (tentativo) da usare
+    let start = 0;   // sequenza di inizio del tentativo in corso
+    let round = 0;   // round in corso nel tentativo (0-based)
+    let tries = 0;
     let timers = [];
     let dead = false;
     const later = (fn, ms) => { const t = setTimeout(() => { if (!dead) fn(); }, ms); timers.push(t); };
@@ -422,8 +422,9 @@
     function intro() {
       box.replaceChildren();
       box.dataset.phase = 'intro';
-      box.appendChild(el('p', 'Il riquadro è rosso: aspetta. Appena diventa verde toccalo, ' + volte +
-        ' volte di fila. Se lo tocchi mentre è ancora rosso è un anticipo: quel turno si ripete.', 'hint'));
+      box.appendChild(el('p', 'Dopo un\'attesa compaiono due riquadri uguali per meno di un secondo, poi restano ' +
+        'al loro posto ma vuoti. Tocca "SCHIACCIAMI!": se tocchi "BABBO" si riparte dal round 1. ' +
+        rounds + ' round di fila per finire.', 'hint'));
       const b = el('button', 'Inizia', 'game-start');
       b.type = 'button';
       b.addEventListener('click', newGame);
@@ -431,79 +432,82 @@
     }
 
     function dots() {
-      const d = el('div', null, 'rf-dots');
-      for (let i = 0; i < volte; i++) d.appendChild(el('span', null, i < done ? 'done' : i === done ? 'now' : ''));
+      const d = el('div', null, 'bb-dots');
+      for (let i = 0; i < rounds; i++) d.appendChild(el('span', null, i < round ? 'done' : i === round ? 'now' : ''));
       return d;
     }
 
     function newGame() {
       clear();
-      start = next;
-      done = 0;
-      errori = 0;
-      times = [];
+      if (next >= seqs.length) {
+        box.replaceChildren(el('p', 'Sequenze finite.', 'game-note bad'));
+        box.dataset.phase = 'finite';
+        return;
+      }
+      tries++;
+      start = next++;
+      round = 0;
       turn();
     }
 
     function turn() {
       clear();
-      if (next >= waits.length) {
-        box.replaceChildren(el('p', 'Attese finite.', 'game-note bad'));
-        box.dataset.phase = 'finite';
-        return;
-      }
-      const wait = Number(waits[next++]) || 0;
+      const wait = Number((seqs[start] || [])[round]) || 0;
       box.replaceChildren();
       box.dataset.phase = 'aspetta';
-      box.dataset.round = String(done + 1);
-      box.dataset.errori = String(errori);
+      box.dataset.round = String(round + 1);
       box.appendChild(dots());
-      box.appendChild(el('p', 'Round ' + (done + 1) + ' di ' + volte + (errori ? ' · anticipi: ' + errori : ''), 'game-note'));
-      const target = el('div', 'ASPETTA…', 'rf-box rf-rosso');
-      box.appendChild(target);
-      let armed = false;
-      let tapped = false;
-      let shownAt = 0;
-      target.addEventListener('click', () => {
-        if (dead || tapped) return;
-        if (!armed) {
-          tapped = true;
-          errori++;
-          target.classList.remove('rf-rosso');
-          target.classList.add('rf-wrong');
-          target.textContent = 'Troppo presto!';
-          box.dataset.phase = 'errore';
-          later(turn, 500);
-          return;
-        }
-        tapped = true;
-        times.push(Math.round(performance.now() - shownAt));
-        done++;
-        if (done >= volte) {
+      box.appendChild(el('p', 'Round ' + (round + 1) + ' di ' + rounds, 'game-note'));
+      const row = el('div', null, 'bb-row');
+      box.appendChild(row);
+      later(() => reveal(row), wait);
+    }
+
+    function reveal(row) {
+      const schiacciaDx = round % 2 === 0;   // la posizione si alterna a ogni round
+      const mk = (label, ok) => {
+        const c = el('div', label, 'bb-box');
+        c.dataset.ok = ok ? '1' : '0';
+        c.addEventListener('click', () => tap(ok, c));
+        return c;
+      };
+      const left = mk(schiacciaDx ? 'BABBO' : 'SCHIACCIAMI!', !schiacciaDx);
+      const right = mk(schiacciaDx ? 'SCHIACCIAMI!' : 'BABBO', schiacciaDx);
+      row.replaceChildren(left, right);
+      box.dataset.phase = 'mostra';
+      later(() => {
+        box.dataset.phase = 'oscurato';
+        left.textContent = '';
+        right.textContent = '';
+        left.classList.add('bb-oscurato');
+        right.classList.add('bb-oscurato');
+      }, showMs);
+    }
+
+    function tap(ok, node) {
+      if (dead || box.dataset.phase === 'fine' || box.dataset.phase === 'aspetta') return;
+      clear();
+      if (ok) {
+        node.classList.add('bb-vinto');
+        round++;
+        if (round >= rounds) {
           box.dataset.phase = 'fine';
-          opts.onDone({ inizio: start, usate: next - start, tempi: times.slice(), errori });
+          opts.onDone({ tentativo: start, tentativi: tries });
         } else {
-          target.classList.remove('rf-verde');
-          target.classList.add('rf-ok');
           box.dataset.phase = 'ok';
           later(turn, 500);
         }
-      });
-      later(() => {
-        if (tapped) return;
-        armed = true;
-        shownAt = performance.now();
-        target.textContent = 'TOCCA!';
-        target.classList.remove('rf-rosso');
-        target.classList.add('rf-verde');
-        box.dataset.phase = 'tocca';
-      }, wait);
+      } else {
+        node.classList.add('bb-wrong');
+        box.dataset.phase = 'errore';
+        later(newGame, 700);
+      }
     }
 
     intro();
     return {
       destroy() { dead = true; clear(); box.replaceChildren(); delete box.dataset.phase; },
-      // il server ha rifiutato la risposta: nuovo tentativo (attese successive)
+      // il server ha rifiutato la risposta: nuovo tentativo con dati nuovi
       retry() { if (!dead) newGame(); },
     };
   }
