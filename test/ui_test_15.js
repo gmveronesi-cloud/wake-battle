@@ -3,7 +3,9 @@
 // ("https://wakebattle.test/qr", generato con la libreria python "qrcode")
 // in loop — basta UNA lettura valida per finire, nessun tempo di
 // mantenimento (a differenza di "Accendi la luce"): decodeFrame()/QR_SAMPLE/
-// QR_INTERVAL_MS sono in games.js.
+// QR_INTERVAL_MS sono in games.js. A differenza di "Accendi la luce" qui il
+// video è IN DIRETTA (serve per mirare) e non c'è la barra (cameraGame con
+// showVideo:true, showBar:false).
 const { T, check, db, rpc, log, openApp, txt, visible, shot, reload, tabTo, setupCouple, start, finish } = require('./ui_lib');
 
 const attr = (page, sel, a) => page.getAttribute(sel, a);
@@ -22,12 +24,13 @@ const attr = (page, sel, a) => page.getAttribute(sel, a);
   await page.waitForSelector('#b-play:not([hidden]) .game-start');
   const intro = await txt(page, '#b-game');
   check('beta: spiegazione fotocamera/QR', intro.toLowerCase().includes('qr') || intro.toLowerCase().includes('codice a barre'));
-  check('beta: niente video/barra prima di Inizia', (await page.locator('#b-game video, #b-game .cam-bar').count()) === 0);
+  check('beta: niente video prima di Inizia', (await page.locator('#b-game video').count()) === 0);
   await shot(page, '73_qr_beta_intro');
   const t0 = Date.now();
   await page.click('#b-game .game-start');
-  await page.waitForSelector('#b-game[data-phase="gioca"] .cam-bar', { timeout: 15000 });
-  check('beta: video presente ma nascosto (niente feed live)', await page.locator('#b-game video').isHidden());
+  await page.waitForSelector('#b-game[data-phase="gioca"] video', { timeout: 15000 });
+  check('beta: video in diretta visibile (serve per mirare)', await page.locator('#b-game video').isVisible());
+  check('beta: niente barra (nessun livello progressivo da mostrare)', (await page.locator('#b-game .cam-bar').count()) === 0);
   await shot(page, '74_qr_beta_gioca');
   await page.waitForSelector('#b-result:not([hidden])', { timeout: 15000 });
   check('beta: letto in fretta, nessun tempo di mantenimento (non 10 s come luce)', Date.now() - t0 < 8000, Date.now() - t0);
@@ -70,7 +73,7 @@ const attr = (page, sel, a) => page.getAttribute(sel, a);
   check('lun: niente Fatto', !(await visible(page, '#b-done')));
   await shot(page, '77_qr_oggi_intro');
   await page.click('#o-game .game-start');
-  await page.waitForSelector('#o-game[data-phase="gioca"] .cam-bar', { timeout: 15000 });
+  await page.waitForSelector('#o-game[data-phase="gioca"] video', { timeout: 15000 });
   await shot(page, '78_qr_oggi_gioca');
   await page.waitForSelector('#o-result:not([hidden])', { timeout: 15000 });
   const cg = log.filter((x) => x.fn === 'complete_game').pop();
