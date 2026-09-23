@@ -1,5 +1,5 @@
 'use strict';
-// Wake Battle — giochi (v15). Usato sia dall'app (sfida vera) sia da beta.html (prova).
+// Wake Battle — giochi (v16). Usato sia dall'app (sfida vera) sia da beta.html (prova).
 // Ogni gioco riceve i parametri generati dal server e, a fine partita, chiama
 // onDone(risposta): la risposta viene poi controllata dal server.
 // API: WBGames.has(codice) · WBGames.mount(codice, contenitore, parametri, { onDone })
@@ -767,34 +767,46 @@
   }
 
   // ---------------------------------------------------------------------
-  // ACCENDI LA LUCE (v15): usa cameraGame() sopra per tutta la parte
+  // ACCENDI LA LUCE (v16): usa cameraGame() sopra per tutta la parte
   // GENERICA (permesso, video nascosto, ciclo dei frame). SPECIFICO di
-  // questo gioco: grayAvg() e la soglia/durata qui sotto.
-  // "Accesa" = media dei toni di grigio del frame sopra LUCE_SOGLIA
-  // mantenuta SENZA INTERRUZIONI per almeno LUCE_MS_MIN (tempo reale, non
-  // conteggio di frame: scende sotto soglia anche per un solo frame ->
-  // il conto riparte da zero). La barra mostra il livello in tempo reale
-  // e, mentre si è sopra soglia, il countdown dei secondi che mancano.
+  // questo gioco: countHotPixels() e le soglie/durata qui sotto.
+  // NON si guarda la media di tutto il frame (richiederebbe una stanza
+  // intera ben illuminata): si contano i pixel SINGOLI vicini alla
+  // saturazione (una lampadina/fascio di luce inquadrati da vicino
+  // "bruciano" quella zona), così basta un punto di luce concentrato
+  // anche con il resto della stanza al buio. "Accesa" = almeno
+  // LUCE_MIN_HOT pixel così luminosi, mantenuto SENZA INTERRUZIONI per
+  // almeno LUCE_MS_MIN (tempo reale: un solo frame sotto soglia e il
+  // conto riparte da zero). Campionamento più fine del default (sample
+  // 48 invece di 32) perché un punto piccolo si perde se il frame viene
+  // rimpicciolito troppo. La barra mostra quanto ci si avvicina alla
+  // soglia e poi il countdown dei secondi che mancano.
   // Nessun dato del sensore va al server: risposta { fatto: true }.
   // ---------------------------------------------------------------------
-  const LUCE_SOGLIA = 200;      // media grigio 0-255 sopra cui è "accesa" (molto luminoso)
-  const LUCE_MS_MIN = 10000;    // millisecondi consecutivi sopra soglia per confermare
+  const LUCE_SAMPLE = 48;          // lato del canvas interno (più fine del default 32)
+  const LUCE_PIXEL_SOGLIA = 225;   // luminanza 0-255 di un SINGOLO pixel per contare come "punto di luce"
+  const LUCE_MIN_HOT = 15;         // pixel così luminosi necessari (un pixel isolato non basta: è rumore)
+  const LUCE_MS_MIN = 10000;       // millisecondi consecutivi col punto di luce rilevato
 
-  function grayAvg(frame) {
+  function countHotPixels(frame) {
     const d = frame.data;
-    let sum = 0;
-    for (let i = 0; i < d.length; i += 4) sum += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-    return sum / (d.length / 4);
+    let hot = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      const l = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+      if (l > LUCE_PIXEL_SOGLIA) hot++;
+    }
+    return hot;
   }
 
   function luce(box, params, opts) {
     let aboveSince = null;   // istante (ms) da cui si è ininterrottamente sopra soglia
     return cameraGame(box, {
-      hint: 'Punta la fotocamera verso una lampada spenta, poi accendila e tieni la luce inquadrata: quando resta abbastanza forte per 10 secondi di fila si passa da soli.',
+      sample: LUCE_SAMPLE,
+      hint: 'Inquadra una lampada spenta da vicino, poi accendila e tieni il punto di luce inquadrato: quando la fotocamera lo vede abbastanza concentrato per 10 secondi di fila si passa da soli.',
       onFrame(frame, ctrl) {
-        const avg = grayAvg(frame);
-        const pct = Math.round((avg / 255) * 100);
-        if (avg > LUCE_SOGLIA) {
+        const hot = countHotPixels(frame);
+        const pct = Math.round(Math.min(100, (hot / LUCE_MIN_HOT) * 100));
+        if (hot >= LUCE_MIN_HOT) {
           const now = Date.now();
           if (aboveSince == null) aboveSince = now;
           const left = Math.max(0, Math.ceil((LUCE_MS_MIN - (now - aboveSince)) / 1000));
@@ -802,7 +814,7 @@
           if (now - aboveSince >= LUCE_MS_MIN) ctrl.finish({ fatto: true });
         } else {
           aboveSince = null;
-          ctrl.setLevel(pct, 'Luce rilevata: ' + pct + '%');
+          ctrl.setLevel(pct, pct > 0 ? 'Punto di luce: ' + pct + '%' : 'Nessun punto di luce rilevato');
         }
       },
     }, opts.onDone);

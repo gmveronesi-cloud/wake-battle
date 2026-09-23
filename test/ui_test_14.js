@@ -1,6 +1,8 @@
 // Test UI passo 3.7: Accendi la luce (beta + fotocamera negata + sfida vera).
-// Fotocamera finta (vedi ui_lib.js): video di test buio 2 s poi luce forte 12 s, in loop
-// (soglia LUCE_SOGLIA e durata minima LUCE_MS_MIN=10s sono in games.js).
+// Fotocamera finta (vedi ui_lib.js): video di test buio 2 s poi 12 s con un
+// quadrato luminoso concentrato al centro (~14% del frame, resto al buio),
+// in loop — verifica che si rilevi un PUNTO di luce e non la media del
+// frame (LUCE_PIXEL_SOGLIA/LUCE_MIN_HOT/LUCE_MS_MIN sono in games.js).
 const { T, check, db, rpc, log, openApp, txt, visible, shot, reload, tabTo, setupCouple, start, finish } = require('./ui_lib');
 
 const attr = (page, sel, a) => page.getAttribute(sel, a);

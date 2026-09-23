@@ -3,6 +3,10 @@
 Log dei passi completati, tenuto separato da STATO.md (che ora contiene solo lo stato corrente).
 Le regole di gioco restano SOLO in DECISIONI.md: qui si racconta solo cosa è stato fatto e quando.
 
+## Passo 3.7c — Accendi la luce: rilevazione a punto di luce concentrato (v16, 23/09)
+- La 1ª taratura (v15, media di tutto il frame sopra 200/255) era troppo esigente: serviva l'intera stanza molto illuminata, non solo la lampada. Cambiato l'algoritmo (solo games.js, nessun SQL): invece della media, si contano i pixel SINGOLI vicini alla saturazione (LUCE_PIXEL_SOGLIA=225/255) — bastano LUCE_MIN_HOT=15 pixel così luminosi (una lampadina/fascio di luce inquadrati da vicino "bruciano" quella zona anche col resto della stanza al buio). Restano invariati: 10 secondi consecutivi (LUCE_MS_MIN), countdown nella barra, nessun dato del sensore verificato dal server. Campionamento portato a 48×48 (da 32×32) perché un punto piccolo si perde troppo se il frame è ridotto di più.
+- Test: video finto rigenerato con un vero punto di luce concentrato (quadrato ~14% del frame acceso, resto buio) invece di un frame uniforme, per verificare che il nuovo algoritmo funzioni davvero dove la media avrebbe fallito.
+
 ## Passo 3.7b — Accendi la luce: taratura dopo prova reale (v15, 23/09)
 - Dopo la prima prova sul telefono: soglia troppo bassa e rilevazione istantanea (5 frame, ~0,6 s) facevano passare il gioco troppo facilmente. Solo modifica lato client (games.js), nessun nuovo file SQL: `LUCE_SOGLIA` 120 → 200 (su 255) e `LUCE_FRAME_OK` (conteggio frame) sostituito da `LUCE_MS_MIN` = 10000 ms mantenuti SENZA INTERRUZIONI (tempo reale con `Date.now()`, non conteggio di frame: basta un frame sotto soglia per azzerare il conto). La barra mostra anche il countdown dei secondi mancanti mentre si è sopra soglia.
 - Test: video finto `test/fixtures/luce.y4m` rigenerato (buio 2 s + luce forte 12 s, invece di 2+2 s) per coprire i nuovi 10 s richiesti; ui_test_14 aggiunge un controllo che il completamento non sia istantaneo (>= ~9 s dall'avvio) e che compaia il countdown "tieni ferma per altri N s".
