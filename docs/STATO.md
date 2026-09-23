@@ -17,7 +17,7 @@ Le regole di gioco sono SOLO in docs/DECISIONI.md (prevale su tutto): qui non ri
 | Numeri in ordine | ✓ | eseguito | ✓ |
 | Colore della parola | ✓ (v7) | 06 eseguito; **sql/07_refactor_giochi.sql** ancora da eseguire (facoltativo, vedi sotto) | ✓ (già attivata da Gianmarco col 06) |
 | Riflessi | ✓ (v11, "Babbo/Schiacciami") | 10 eseguito (versione vecchia, superata); **sql/11_riflessi_babbo.sql** da eseguire | da attivare dopo la prova in beta |
-| Anagramma | ✓ (v12) | **sql/12_anagramma.sql** da eseguire | da attivare dopo la prova in beta |
+| Anagramma | ✓ (v12) | **sql/12_anagramma.sql** e **sql/13_anagramma_parole.sql** da eseguire | da attivare dopo la prova in beta |
 | QR/barcode, luce, caccia ai colori, occhi aperti, trova l'oggetto | da fare | — | — |
 | Esercizi (video) | da fare | — | — |
 
@@ -25,7 +25,7 @@ Le regole di gioco sono SOLO in docs/DECISIONI.md (prevale su tutto): qui non ri
 
 ## Da fare ora (Gianmarco)
 Anagramma (nuovo):
-1. Eseguire `sql/12_anagramma.sql` in Supabase (richiede 01..11 già eseguiti).
+1. Eseguire `sql/12_anagramma.sql` e poi `sql/13_anagramma_parole.sql` in Supabase (richiede 01..11 già eseguiti; il 13 amplia la lista da 79 a 146 parole possibili, nessun'altra regola cambia).
 2. Provare in beta il gioco "Anagramma": 5 parole di fila, lettere mescolate come tessere da toccare nell'ordine giusto per ricomporre la parola. Un tocco sbagliato lampeggia di rosso senza penalità: si continua sulla stessa parola (nessuna ripartenza). Parola giusta → passa da sola alla successiva.
 3. Se va bene, attivare nella sfida vera con:
    `update public.challenge_types set enabled = true, game_live = true where code = 'anagramma';`

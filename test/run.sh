@@ -82,3 +82,9 @@ if [ -f sql/12_anagramma.sql ]; then
   echo "--- 12 rilanciato due volte: nessun errore ---"
   $P -d wb -f sql/12_anagramma.sql && echo ok
 fi
+if [ -f sql/13_anagramma_parole.sql ]; then
+  L="$P -d wb -f sql/03_giochi.sql -f sql/04_memoria_round.sql -f sql/05_numeri.sql -f sql/06_colore_parola.sql -f sql/07_refactor_giochi.sql -f sql/08_intruso.sql -f sql/09_rimuovi_intruso.sql -f sql/10_riflessi.sql -f sql/11_riflessi_babbo.sql -f sql/12_anagramma.sql -f sql/13_anagramma_parole.sql"
+  echo "--- test 12 (Anagramma) ancora valido dopo 13 (più parole) ---"; reset_db; $L; python3 test/test_12.py
+  echo "--- 13 rilanciato due volte: nessun errore ---"
+  $P -d wb -f sql/13_anagramma_parole.sql && echo ok
+fi
