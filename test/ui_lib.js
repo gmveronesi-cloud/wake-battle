@@ -53,6 +53,7 @@ const RPC_ARGS = {
   complete_game: [['p_answer', 'jsonb']],
   beta_start: [['p_code', 'text']],
   beta_check: [['p_code', 'text'], ['p_params', 'jsonb'], ['p_answer', 'jsonb']],
+  save_object_photos: [['p_foto', 'jsonb']],
 };
 async function rpc(uid, fn, body) {
   const defs = (RPC_ARGS[fn] || []).filter(([n]) => body && n in body);

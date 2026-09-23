@@ -1,5 +1,5 @@
 'use strict';
-// Wake Battle v19 — Passo 1 (accesso + coppia) + Passo 2 (sveglie, punteggi) + Passo 3 (giochi veri: Memoria, Numeri in ordine, Colore della parola, Riflessi, Anagramma, Accendi la luce, QR o codice a barre, Caccia ai colori).
+// Wake Battle v20 — Passo 1 (accesso + coppia) + Passo 2 (sveglie, punteggi) + Passo 3 (giochi veri: Memoria, Numeri in ordine, Colore della parola, Riflessi, Anagramma, Accendi la luce, QR o codice a barre, Caccia ai colori, Trova l'oggetto).
 // Regola di sicurezza: i testi degli utenti vanno SEMPRE in textContent, mai in innerHTML.
 // Tempi e punti li decide il server: l'app mostra solo quello che il server risponde.
 
@@ -364,6 +364,20 @@
     return g && window.WBGames && window.WBGames.has(g) ? g : null;
   }
 
+  // "Trova l'oggetto": le miniature scattate durante la partita, proprie
+  // e del partner (get_today le manda già filtrate per visibilità/24 ore).
+  function renderFoto(id, foto) {
+    const box = $(id);
+    box.replaceChildren();
+    box.hidden = !(foto && foto.length);
+    (foto || []).forEach((src) => {
+      const img = document.createElement('img');
+      img.src = src;
+      img.alt = '';
+      box.appendChild(img);
+    });
+  }
+
   function renderToday() {
     const t = today;
     const io = t.io, pa = t.partner;
@@ -413,6 +427,7 @@
       $('o-result-main').className = 'result lose';
     }
     $('o-result-ch').textContent = io.challenge ? 'Challenge: ' + io.challenge.nome : '';
+    renderFoto('o-foto', io.foto);
 
     // partner
     $('o-p-label').textContent = pa.nome || partnerName;
@@ -423,6 +438,7 @@
       fatto: 'Fatto in ' + dur(pa.secondi),
       scaduto: 'Tempo scaduto',
     }[pa.stato] || '';
+    renderFoto('o-p-foto', pa.foto);
 
     // esito della giornata
     const b = $('o-day');
@@ -484,8 +500,23 @@
 
   $('b-done').addEventListener('click', (ev) => busy(ev.currentTarget, () => sendDone('complete_challenge')));
 
-  function finishGame(answer) {
-    return sendDone('complete_game', { p_answer: answer });
+  // "Trova l'oggetto" aggiunge alla risposta un array "foto" (le miniature
+  // scattate ad ogni tocco): va staccato dalla risposta del gioco vero e
+  // proprio (supererebbe il limite di byte di complete_game) e salvato a
+  // parte con save_object_photos(), solo se il "Fatto" è stato registrato.
+  async function finishGame(answer) {
+    let foto = null;
+    if (answer && Array.isArray(answer.foto)) {
+      foto = answer.foto;
+      answer = Object.assign({}, answer);
+      delete answer.foto;
+    }
+    const ok = await sendDone('complete_game', { p_answer: answer });
+    if (ok && foto) {
+      await call('save_object_photos', { p_foto: foto });
+      await loadToday();   // rifà il giro: la prima loadToday() (dentro sendDone) non aveva ancora le foto
+    }
+    return ok;
   }
 
   // ---------- SFIDA ----------

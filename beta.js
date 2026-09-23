@@ -1,5 +1,5 @@
 'use strict';
-// Wake Battle — pagina di prova dei giochi (v8). Non salva tempi né punti.
+// Wake Battle — pagina di prova dei giochi (v9). Non salva tempi né punti.
 
 (function () {
   const cfg = window.WB_CONFIG;
@@ -92,10 +92,28 @@
     clearInterval(tickTimer); tickTimer = null;
     const secs = (Date.now() - t0) / 1000;
     $('b-timer').textContent = dur(secs);
+    // "Trova l'oggetto": le miniature non passano da beta_check (supererebbero
+    // il limite di byte della risposta) e non si salvano nella prova (come
+    // tutto il resto qui): si mostrano solo per un attimo, in pagina.
+    let foto = null;
+    if (answer && Array.isArray(answer.foto)) {
+      foto = answer.foto;
+      answer = Object.assign({}, answer);
+      delete answer.foto;
+    }
     const r = await call('beta_check', { p_code: current.codice, p_params: current.parametri, p_answer: answer });
     if (!r) return;
     $('b-result').hidden = false;
     $('b-game').hidden = true;
+    const fotoBox = $('b-foto');
+    fotoBox.replaceChildren();
+    fotoBox.hidden = !(foto && foto.length);
+    (foto || []).forEach((src) => {
+      const img = document.createElement('img');
+      img.src = src;
+      img.alt = '';
+      fotoBox.appendChild(img);
+    });
     if (r.corretto) {
       $('b-result-main').textContent = 'Completato in ' + dur(secs);
       $('b-result-main').className = 'result win';

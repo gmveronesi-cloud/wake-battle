@@ -180,3 +180,8 @@ button.game-start { font-size: 22px; padding: 20px; background: var(--ok); color
 /* Anteprima video in diretta (v18, cameraGame({showVideo:true}) — es. QR o
    codice a barre: serve vedere cosa si sta inquadrando per mirare bene) */
 .cam-video { width: 100%; max-width: 360px; border-radius: 12px; margin: 14px 0; background: #000; }
+
+/* Miniature di "Trova l'oggetto" (v20): proprie e del partner, stesso
+   stile in app e beta. */
+.foto-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 10px 0 0; }
+.foto-grid img { width: 64px; height: 64px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); }

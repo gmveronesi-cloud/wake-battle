@@ -47,7 +47,8 @@ def rpc(fn, *args):
     return r if not isinstance(r, str) else json.loads(r)
 
 
-_JRPC_CASTS = {"complete_game": ["jsonb"], "beta_check": ["text", "jsonb", "jsonb"]}
+_JRPC_CASTS = {"complete_game": ["jsonb"], "beta_check": ["text", "jsonb", "jsonb"],
+               "save_object_photos": ["jsonb"]}
 
 
 def jrpc(fn, *args):

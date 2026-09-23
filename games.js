@@ -1,5 +1,5 @@
 'use strict';
-// Wake Battle — giochi (v19). Usato sia dall'app (sfida vera) sia da beta.html (prova).
+// Wake Battle — giochi (v20). Usato sia dall'app (sfida vera) sia da beta.html (prova).
 // Ogni gioco riceve i parametri generati dal server e, a fine partita, chiama
 // onDone(risposta): la risposta viene poi controllata dal server.
 // API: WBGames.has(codice) · WBGames.mount(codice, contenitore, parametri, { onDone })
@@ -54,7 +54,16 @@
   //           di preciso, es. QR/barcode),
   //         showBar (default true: barra del livello; false per i giochi
   //           dove non ha un significato continuo, es. QR/barcode: o si è
-  //           letto un codice o no, niente da mostrare in progressione) }
+  //           letto un codice o no, niente da mostrare in progressione)
+  //         manual (default false: analisi automatica dei frame tramite
+  //           onFrame; true per i giochi senza nessuna analisi, dove è la
+  //           persona a confermare toccando un pulsante — es. Trova
+  //           l'oggetto, nessun riconoscimento reale): niente cameraLoop,
+  //           solo un pulsante (opts.buttonLabel) che chiama
+  //           opts.onTap(video, ctrl) ad ogni tocco; opts.onReady(video,
+  //           ctrl), se presente, parte una volta sola a fotocamera pronta
+  //           (utile per il testo iniziale, es. il primo oggetto da
+  //           cercare) }
   function cameraGame(box, opts, onDone) {
     let stream = null;
     let stopLoop = null;
@@ -133,7 +142,15 @@
           onDone(answer);
         },
       };
-      stopLoop = cameraLoop(video, opts.sample || 32, (frame) => opts.onFrame(frame, ctrl), opts.intervalMs || 120);
+      if (opts.manual) {
+        const tapBtn = el('button', opts.buttonLabel || 'Fatto', 'game-start');
+        tapBtn.type = 'button';
+        tapBtn.addEventListener('click', () => opts.onTap(video, ctrl));
+        box.appendChild(tapBtn);
+        if (opts.onReady) opts.onReady(video, ctrl);
+      } else {
+        stopLoop = cameraLoop(video, opts.sample || 32, (frame) => opts.onFrame(frame, ctrl), opts.intervalMs || 120);
+      }
     }
 
     intro();
@@ -983,7 +1000,75 @@
     }, opts.onDone);
   }
 
-  const GAMES = { memoria, numeri, colore_parola: coloreParola, riflessi, anagramma, luce, qr, caccia_colori: cacciaColori };
+  // ---------------------------------------------------------------------
+  // TROVA L'OGGETTO (v20): usa cameraGame() sopra con showVideo:true,
+  // showBar:false e manual:true — NESSUNA analisi del frame (deciso il
+  // 23/09/2026: niente IA di riconoscimento, come "luce"/"qr"/
+  // "caccia_colori" il client si fida): si inquadra l'oggetto richiesto e
+  // si tocca "Trovato!" per confermarlo da soli. Ogni tocco scatta anche
+  // una foto (snapshot() sopra: ritaglio centrale dal video a piena
+  // risoluzione, non il piccolo canvas di analisi) che si aggiunge alla
+  // risposta finale; app.js la stacca dalla risposta del gioco vero e
+  // proprio e la salva a parte con save_object_photos() (mai dentro
+  // complete_game/beta_check: supererebbe il limite di byte della
+  // risposta). Sequenza di 5 oggetti generata dal server (stessa per la
+  // coppia, come "caccia_colori"). Risposta: { fatto: true, foto: [5
+  // miniature] }.
+  // ---------------------------------------------------------------------
+  const OGGETTO_SNAPSHOT_SIZE = 200;
+  const OGGETTO_NOMI = {
+    spazzolino: 'SPAZZOLINO', tazza: 'TAZZA', frigorifero: 'FRIGORIFERO', lavandino: 'LAVANDINO',
+    bottiglia: 'BOTTIGLIA', sedia: 'SEDIA', libro: 'LIBRO', telefono: 'TELEFONO', forbici: 'FORBICI',
+    orologio: 'OROLOGIO', scarpa: 'SCARPA', chiave: 'CHIAVE', specchio: 'SPECCHIO',
+    asciugamano: 'ASCIUGAMANO', spazzola: 'SPAZZOLA',
+  };
+
+  // ritaglio centrale quadrato dal <video> a piena risoluzione (non il
+  // piccolo canvas interno di cameraLoop, pensato solo per l'analisi):
+  // qui serve una miniatura guardabile, JPEG a bassa qualità perché resta
+  // solo una prova visiva nell'app, non serve per nessun controllo.
+  function snapshot(video, size) {
+    const vw = video.videoWidth || size;
+    const vh = video.videoHeight || size;
+    const side = Math.min(vw, vh);
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    canvas.getContext('2d').drawImage(video, (vw - side) / 2, (vh - side) / 2, side, side, 0, 0, size, size);
+    return canvas.toDataURL('image/jpeg', 0.5);
+  }
+
+  function trovaOggetto(box, params, opts) {
+    const seq = params.sequenza || [];
+    let idx = 0;
+    const foto = [];
+
+    function testo(oggetto) {
+      const nome = OGGETTO_NOMI[oggetto] || String(oggetto).toUpperCase();
+      return 'Trova: ' + nome + ' (' + (idx + 1) + '/' + seq.length + ')';
+    }
+
+    return cameraGame(box, {
+      showVideo: true,
+      showBar: false,
+      manual: true,
+      buttonLabel: 'Trovato!',
+      hint: 'Vengono richiesti 5 oggetti di fila: inquadra ognuno da vicino con la fotocamera e tocca "Trovato!" per confermarlo. ' +
+        'Una foto di ognuno resta visibile nell\'app, a te e al partner.',
+      onReady(video, ctrl) { ctrl.setLevel(null, testo(seq[idx])); },
+      onTap(video, ctrl) {
+        foto.push(snapshot(video, OGGETTO_SNAPSHOT_SIZE));
+        idx++;
+        if (idx >= seq.length) {
+          ctrl.finish({ fatto: true, foto: foto.slice() });
+        } else {
+          ctrl.setLevel(null, testo(seq[idx]));
+        }
+      },
+    }, opts.onDone);
+  }
+
+  const GAMES = { memoria, numeri, colore_parola: coloreParola, riflessi, anagramma, luce, qr, caccia_colori: cacciaColori, oggetto: trovaOggetto };
 
   window.WBGames = {
     has: (code) => Object.prototype.hasOwnProperty.call(GAMES, code),
