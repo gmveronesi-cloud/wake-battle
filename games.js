@@ -1,5 +1,5 @@
 'use strict';
-// Wake Battle — giochi (v16). Usato sia dall'app (sfida vera) sia da beta.html (prova).
+// Wake Battle — giochi (v17). Usato sia dall'app (sfida vera) sia da beta.html (prova).
 // Ogni gioco riceve i parametri generati dal server e, a fine partita, chiama
 // onDone(risposta): la risposta viene poi controllata dal server.
 // API: WBGames.has(codice) · WBGames.mount(codice, contenitore, parametri, { onDone })
@@ -820,7 +820,58 @@
     }, opts.onDone);
   }
 
-  const GAMES = { memoria, numeri, colore_parola: coloreParola, riflessi, anagramma, luce };
+  // ---------------------------------------------------------------------
+  // QR O CODICE A BARRE (v17): usa cameraGame() sopra per la parte GENERICA
+  // (permesso, video nascosto, ciclo dei frame). SPECIFICO: decodeFrame(),
+  // che usa la libreria ZXing (vendor/zxing.js, inclusa nel sito senza CDN;
+  // nessun worker/wasm/blob, quindi CSP invariata) per cercare un QR o un
+  // codice a barre in ogni frame. A differenza di "Accendi la luce" non
+  // serve nessun tempo di mantenimento: basta UNA lettura valida (i formati
+  // hanno un controllo di integrità incorporato, niente falsi positivi) e
+  // si finisce subito. Frame più grande del default (360 invece di 32/48)
+  // perché decodificare richiede molto più dettaglio della sola luminosità
+  // media; scansione ogni 300 ms (il decoder è più pesante di un semplice
+  // conteggio di pixel). Nessun dato del sensore va al server: risposta
+  // { fatto: true }.
+  // ---------------------------------------------------------------------
+  const QR_SAMPLE = 360;
+  const QR_INTERVAL_MS = 300;
+
+  function decodeFrame(frame, reader) {
+    const d = frame.data;
+    const n = frame.width * frame.height;
+    const luminances = new Uint8ClampedArray(n);
+    for (let i = 0, j = 0; j < n; i += 4, j++) {
+      luminances[j] = (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) | 0;
+    }
+    const source = new ZXing.RGBLuminanceSource(luminances, frame.width, frame.height);
+    const bitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(source));
+    try {
+      return reader.decodeWithState(bitmap).getText();
+    } catch (e) {
+      return null;   // nessun codice in questo frame: non è un errore, si continua
+    }
+  }
+
+  function qr(box, params, opts) {
+    const reader = new ZXing.MultiFormatReader();
+    return cameraGame(box, {
+      sample: QR_SAMPLE,
+      intervalMs: QR_INTERVAL_MS,
+      hint: 'Inquadra un QR o un codice a barre qualsiasi (va bene un\'etichetta o una confezione qualunque): appena viene letto si passa da soli.',
+      onFrame(frame, ctrl) {
+        const text = decodeFrame(frame, reader);
+        if (text != null) {
+          ctrl.setLevel(100, 'Codice letto: fatto!');
+          ctrl.finish({ fatto: true });
+        } else {
+          ctrl.setLevel(0, 'Cerco un codice…');
+        }
+      },
+    }, opts.onDone);
+  }
+
+  const GAMES = { memoria, numeri, colore_parola: coloreParola, riflessi, anagramma, luce, qr };
 
   window.WBGames = {
     has: (code) => Object.prototype.hasOwnProperty.call(GAMES, code),

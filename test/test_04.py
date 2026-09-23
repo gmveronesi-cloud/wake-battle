@@ -59,7 +59,7 @@ check("params senza sequenze", bc(ans(p, 0), {"round": 5}), False)
 check("params senza round e senza sequenze", bc({"tentativo": 0, "sequenza": [1]}, {"gioco": "memoria"}), False)
 check("risposta lista", bc([1, 2]), False)
 check("params rotti", bc(ans(p, 0), {"round": "x", "sequenze": S}), False)
-check("gioco sconosciuto", jrpc("beta_check", "qr", p, ans(p, 0))["corretto"], False)
+check("gioco sconosciuto", jrpc("beta_check", "barcode", p, ans(p, 0))["corretto"], False)
 
 # formato vecchio (giornate create col 03) ancora accettato
 old = {"gioco": "memoria", "simboli": 9, "mostra_ms": 5000, "sequenze": [[0, 1, 2, 3, 4, 5], [5, 4, 3, 2, 1, 0]]}

@@ -51,7 +51,7 @@ check("beta_check risposta stringa", jrpc("beta_check", "memoria", p, "ciao")["c
 check("beta_check risposta null", jrpc("beta_check", "memoria", p, None)["corretto"], False)
 check("beta_check params rotti", jrpc("beta_check", "memoria", {"sequenze": "x"}, {"tentativo": 0, "sequenza": s0})["corretto"], False)
 check("beta_check tentativo decimale", jrpc("beta_check", "memoria", p, {"tentativo": 0.5, "sequenza": s0})["corretto"] in (False, True), True)
-check("beta_check gioco sconosciuto", jrpc("beta_check", "qr", p, {"tentativo": 0, "sequenza": s0})["corretto"], False)
+check("beta_check gioco sconosciuto", jrpc("beta_check", "barcode", p, {"tentativo": 0, "sequenza": s0})["corretto"], False)
 check("beta_check params enormi", jrpc("beta_check", "memoria", {"x": "a" * 30000}, {})["corretto"], False)
 
 # --- sfida vera: memoria unica attiva, gioco SPENTO -> vecchio "Fatto" -----
