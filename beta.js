@@ -1,5 +1,5 @@
 'use strict';
-// Wake Battle — pagina di prova dei giochi (v9). Non salva tempi né punti.
+// Wake Battle — pagina di prova dei giochi (v10). Non salva tempi né punti.
 
 (function () {
   const cfg = window.WB_CONFIG;
@@ -40,6 +40,15 @@
     clearInterval(tickTimer); tickTimer = null;
     if (game) { game.destroy(); game = null; }
   }
+
+  // "Trova l'oggetto": tocco su una miniatura -> apre la stessa foto a
+  // schermo intero in #foto-lightbox; tocco sulla foto ingrandita per
+  // richiuderla.
+  function openLightbox(src) {
+    $('foto-lightbox-img').src = src;
+    $('foto-lightbox').hidden = false;
+  }
+  $('foto-lightbox').addEventListener('click', () => { $('foto-lightbox').hidden = true; });
 
   async function showList() {
     stopGame();
@@ -112,6 +121,7 @@
       const img = document.createElement('img');
       img.src = src;
       img.alt = '';
+      img.addEventListener('click', () => openLightbox(src));
       fotoBox.appendChild(img);
     });
     if (r.corretto) {

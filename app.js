@@ -1,5 +1,5 @@
 'use strict';
-// Wake Battle v20 — Passo 1 (accesso + coppia) + Passo 2 (sveglie, punteggi) + Passo 3 (giochi veri: Memoria, Numeri in ordine, Colore della parola, Riflessi, Anagramma, Accendi la luce, QR o codice a barre, Caccia ai colori, Trova l'oggetto).
+// Wake Battle v21 — Passo 1 (accesso + coppia) + Passo 2 (sveglie, punteggi) + Passo 3 (giochi veri: Memoria, Numeri in ordine, Colore della parola, Riflessi, Anagramma, Accendi la luce, QR o codice a barre, Caccia ai colori, Trova l'oggetto).
 // Regola di sicurezza: i testi degli utenti vanno SEMPRE in textContent, mai in innerHTML.
 // Tempi e punti li decide il server: l'app mostra solo quello che il server risponde.
 
@@ -364,8 +364,17 @@
     return g && window.WBGames && window.WBGames.has(g) ? g : null;
   }
 
-  // "Trova l'oggetto": le miniature scattate durante la partita, proprie
-  // e del partner (get_today le manda già filtrate per visibilità/24 ore).
+  // "Trova l'oggetto": tocco su una miniatura -> apre la stessa foto a
+  // schermo intero in #foto-lightbox; tocco sulla foto ingrandita per
+  // richiuderla.
+  function openLightbox(src) {
+    $('foto-lightbox-img').src = src;
+    $('foto-lightbox').hidden = false;
+  }
+  $('foto-lightbox').addEventListener('click', () => { $('foto-lightbox').hidden = true; });
+
+  // Le miniature scattate durante la partita, proprie e del partner
+  // (get_today le manda già filtrate per visibilità/24 ore).
   function renderFoto(id, foto) {
     const box = $(id);
     box.replaceChildren();
@@ -374,6 +383,7 @@
       const img = document.createElement('img');
       img.src = src;
       img.alt = '';
+      img.addEventListener('click', () => openLightbox(src));
       box.appendChild(img);
     });
   }

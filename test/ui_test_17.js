@@ -56,6 +56,15 @@ async function tapFound(page, sel, n) {
   check('beta: esito completato', (await txt(page, '#b-result-main')).startsWith('Completato in'));
   check('beta: 5 miniature mostrate (solo in pagina, non salvate)', (await page.locator('#b-foto img').count()) === 5);
   await shot(page, '89_oggetto_beta_fatto');
+  // tocco su una miniatura -> schermo intero, tocco per richiudere
+  check('beta: lightbox chiusa prima del tocco', !(await visible(page, '#foto-lightbox')));
+  const firstSrc = await page.locator('#b-foto img').first().getAttribute('src');
+  await page.locator('#b-foto img').first().click();
+  await page.waitForSelector('#foto-lightbox:not([hidden])');
+  check('beta: lightbox mostra la stessa foto', (await page.locator('#foto-lightbox-img').getAttribute('src')) === firstSrc);
+  await shot(page, '89b_oggetto_beta_lightbox');
+  await page.click('#foto-lightbox');
+  check('beta: tocco sulla lightbox la richiude', !(await visible(page, '#foto-lightbox')));
   await page.click('#b-back');
 
   // ===== 2. Fotocamera negata (contesto a parte: permesso finto negato) =====
@@ -107,6 +116,34 @@ async function tapFound(page, sel, n) {
   check('lun: foto del partner non ancora mostrate (giornata non chiusa)', !(await visible(page, '#o-p-foto')));
   await shot(page, '93_oggetto_oggi_fatto');
 
-  check('nessun errore in console', errors.length === 0, errors);
+  // ===== 4. B finisce a sua volta: entrambe le gallerie, in sezioni separate, su entrambi i dispositivi =====
+  const { page: pageB, errors: errorsB } = await openApp(browser, B, 'giulia@x.it');
+  T.fakeNow = '2026-09-21 07:30:00+02';
+  await pageB.goto('http://localhost:8765/');
+  await pageB.waitForSelector('#v-main:not([hidden])');
+  await pageB.waitForTimeout(500);
+  await pageB.click('#o-game .game-start');
+  await pageB.waitForSelector('#o-game[data-phase="gioca"] video', { timeout: 15000 });
+  await tapFound(pageB, '#o-game[data-phase="gioca"] .game-start', 5);
+  await pageB.waitForSelector('#o-result:not([hidden])', { timeout: 10000 });
+  await pageB.waitForTimeout(300);
+  check('mar B: galleria propria di B', (await pageB.locator('#o-foto img').count()) === 5);
+  check('mar B: giornata chiusa -> vede subito anche le foto di A', (await pageB.locator('#o-p-foto img').count()) === 5);
+  await shot(pageB, '94_oggetto_oggi_B_fatto');
+
+  await reload(page);   // A ricarica: ora la giornata è chiusa anche per lui
+  check('lun A: ora vede anche le foto di B, in una sezione separata', (await page.locator('#o-p-foto img').count()) === 5);
+  check('lun A: le proprie restano visibili nella loro sezione', (await page.locator('#o-foto img').count()) === 5);
+  check('lun A: due gallerie distinte (proprie dentro #o-result, del partner fuori, nella sua card)',
+    (await page.locator('#o-result #o-foto').count()) === 1 && (await page.locator('#o-result #o-p-foto').count()) === 0);
+  const partnerSrc = await page.locator('#o-p-foto img').first().getAttribute('src');
+  await page.locator('#o-p-foto img').first().click();
+  await page.waitForSelector('#foto-lightbox:not([hidden])');
+  check('lun A: lightbox anche sulle foto del partner', (await page.locator('#foto-lightbox-img').getAttribute('src')) === partnerSrc);
+  await page.click('#foto-lightbox');
+  await shot(page, '95_oggetto_oggi_entrambe_le_gallerie');
+
+  check('nessun errore in console (A)', errors.length === 0, errors);
+  check('nessun errore in console (B)', errorsB.length === 0, errorsB);
   await finish(browser, 'UI passo 3.10');
 })().catch(async (e) => { console.error(e); process.exit(2); });
