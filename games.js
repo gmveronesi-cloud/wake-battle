@@ -1,5 +1,5 @@
 'use strict';
-// Wake Battle — giochi (v11). Usato sia dall'app (sfida vera) sia da beta.html (prova).
+// Wake Battle — giochi (v12). Usato sia dall'app (sfida vera) sia da beta.html (prova).
 // Ogni gioco riceve i parametri generati dal server e, a fine partita, chiama
 // onDone(risposta): la risposta viene poi controllata dal server.
 // API: WBGames.has(codice) · WBGames.mount(codice, contenitore, parametri, { onDone })
@@ -512,7 +512,141 @@
     };
   }
 
-  const GAMES = { memoria, numeri, colore_parola: coloreParola, riflessi };
+  // ---------------------------------------------------------------------
+  // ANAGRAMMA (v12): 5 parole (lunghezza 5-7) di fila. Le lettere sono
+  // mostrate mescolate come tessere; l'ordine del mescolamento è calcolato
+  // in modo deterministico dalle lettere stesse (stessa parola -> stesso
+  // mescolamento), quindi uguale per la coppia, come l'ordine dei pulsanti
+  // di Colore della parola. Si toccano nell'ordine giusto per ricomporre
+  // la parola.
+  // Tentativi illimitati: tocco sbagliato -> lampeggio rosso 0,3 s,
+  // nessuna penalità, si continua sulla STESSA parola (nessuna
+  // ripartenza). Parola completata -> passa da sola alla successiva; dopo
+  // la 5ª la risposta parte da sola. Risposta rifiutata dal server ->
+  // nuovo tentativo con 5 parole nuove (come Colore della parola/Riflessi).
+  // Risposta: { tentativo, risposte: [5 × lettere in ordine], tentativi }.
+  // ---------------------------------------------------------------------
+  function letterOrder(letters, seed) {
+    let h = 2166136261 ^ seed;
+    const src = letters.join('|');
+    for (let i = 0; i < src.length; i++) h = Math.imul(h ^ src.charCodeAt(i), 16777619);
+    const rnd = () => {   // mulberry32
+      h = (h + 0x6D2B79F5) | 0;
+      let r = Math.imul(h ^ (h >>> 15), 1 | h);
+      r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
+      return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+    };
+    const o = letters.map((_, i) => i);
+    for (let i = o.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [o[i], o[j]] = [o[j], o[i]]; }
+    if (o.length > 1 && o.every((v, i) => v === i)) o.push(o.shift());   // mai già in ordine
+    return o;
+  }
+
+  function anagramma(box, params, opts) {
+    const seqs = params.sequenze || [];
+    const parole = Number(params.parole) || 5;
+    let next = 0;    // prossimo tentativo (5 parole) da usare
+    let k = 0;       // tentativo in corso
+    let tries = 0;
+    let timers = [];
+    let dead = false;
+    const later = (fn, ms) => { const t = setTimeout(() => { if (!dead) fn(); }, ms); timers.push(t); };
+    const clear = () => { timers.forEach(clearTimeout); timers = []; };
+
+    function intro() {
+      box.replaceChildren();
+      box.dataset.phase = 'intro';
+      box.appendChild(el('p', parole + ' parole mescolate: tocca le lettere nell\'ordine giusto per ricomporle. ' +
+        'Un tocco sbagliato lampeggia di rosso: nessuna penalità, continua.', 'hint'));
+      const b = el('button', 'Inizia', 'game-start');
+      b.type = 'button';
+      b.addEventListener('click', newGame);
+      box.appendChild(b);
+    }
+
+    function dots(word) {
+      const d = el('div', null, 'ana-dots');
+      for (let i = 0; i < parole; i++) d.appendChild(el('span', null, i < word ? 'done' : i === word ? 'now' : ''));
+      return d;
+    }
+
+    function newGame() {
+      clear();
+      if (next >= seqs.length) {
+        box.replaceChildren(el('p', 'Sequenze finite.', 'game-note bad'));
+        box.dataset.phase = 'finite';
+        return;
+      }
+      tries++;
+      k = next++;
+      playWord(0, []);
+    }
+
+    function playWord(word, done) {
+      clear();
+      const letters = seqs[k][word];
+      const order = letterOrder(letters, k * 97 + word);
+      const picked = [];
+      box.replaceChildren();
+      box.dataset.phase = 'gioca';
+      box.dataset.tentativo = String(tries);
+      box.dataset.parola = String(word + 1);
+      box.appendChild(dots(word));
+      const note = el('p', 'Parola ' + (word + 1) + ' di ' + parole + (tries > 1 ? ' · tentativo ' + tries : ''), 'game-note');
+      box.appendChild(note);
+      const slots = el('div', null, 'ana-slots');
+      const slotEls = letters.map(() => { const s = el('div', '', 'ana-slot'); slots.appendChild(s); return s; });
+      box.appendChild(slots);
+      const tiles = el('div', null, 'ana-tiles');
+      order.map((li) => {
+        const t = el('button', letters[li], 'ana-tile');
+        t.type = 'button';
+        t.addEventListener('click', () => tap(li, t));
+        tiles.appendChild(t);
+        return t;
+      });
+      box.appendChild(tiles);
+
+      function tap(li, t) {
+        if (dead || box.dataset.phase !== 'gioca' || t.disabled) return;
+        if (letters[li] === letters[picked.length]) {
+          picked.push(li);
+          t.disabled = true;
+          const slot = slotEls[picked.length - 1];
+          slot.textContent = letters[li];
+          slot.classList.add('ok');
+          if (picked.length === letters.length) {
+            const finished = done.concat([letters.slice()]);
+            if (word + 1 >= parole) {
+              box.dataset.phase = 'fine';
+              note.textContent = 'Controllo…';
+              note.className = 'game-note';
+              opts.onDone({ tentativo: k, risposte: finished, tentativi: tries });
+            } else {
+              box.dataset.phase = 'ok';
+              note.textContent = '✓ Parola trovata!';
+              note.className = 'game-note good';
+              later(() => playWord(word + 1, finished), 700);
+            }
+          }
+        } else {
+          t.classList.remove('ana-wrong');
+          void t.offsetWidth; // fa ripartire il lampeggio
+          t.classList.add('ana-wrong');
+          later(() => t.classList.remove('ana-wrong'), 300);
+        }
+      }
+    }
+
+    intro();
+    return {
+      destroy() { dead = true; clear(); box.replaceChildren(); delete box.dataset.phase; },
+      // il server ha rifiutato la risposta: nuovo tentativo con parole nuove
+      retry() { if (!dead) newGame(); },
+    };
+  }
+
+  const GAMES = { memoria, numeri, colore_parola: coloreParola, riflessi, anagramma };
 
   window.WBGames = {
     has: (code) => Object.prototype.hasOwnProperty.call(GAMES, code),

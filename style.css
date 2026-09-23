@@ -157,3 +157,17 @@ button.game-start { font-size: 22px; padding: 20px; background: var(--ok); color
   font-weight: 800; color: #fff; background: #3a3f4d; border: 2px solid var(--line); border-radius: 16px; user-select: none; }
 .bb-box.bb-vinto { border-color: var(--ok); }
 .bb-box.bb-wrong { border-color: var(--danger); background: var(--danger); color: #000; }
+
+/* Anagramma (v12) — classi ana-*, niente nomi globali */
+.ana-dots { display: flex; justify-content: center; gap: 6px; margin: 0 0 10px; }
+.ana-dots span { width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--line); }
+.ana-dots span.done { background: var(--ok); border-color: var(--ok); }
+.ana-dots span.now { border-color: var(--accent); }
+.ana-slots { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; margin: 18px 0 22px; }
+.ana-slot { width: 40px; height: 48px; display: flex; align-items: center; justify-content: center; font-size: 26px;
+  font-weight: 800; background: var(--bg); border: 2px dashed var(--line); border-radius: 10px; }
+.ana-slot.ok { border-style: solid; border-color: var(--ok); }
+.ana-tiles { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; }
+.ana-tile { width: 48px; height: 48px; padding: 0; font-size: 22px; font-weight: 700; background: var(--bg); border: 1px solid var(--line); }
+.ana-tile:disabled { opacity: 0.25; }
+.ana-tile.ana-wrong { opacity: 1; border-color: var(--danger); background: #3a1f1f; }
