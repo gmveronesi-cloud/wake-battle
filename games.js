@@ -1,5 +1,5 @@
 'use strict';
-// Wake Battle — giochi (v18). Usato sia dall'app (sfida vera) sia da beta.html (prova).
+// Wake Battle — giochi (v19). Usato sia dall'app (sfida vera) sia da beta.html (prova).
 // Ogni gioco riceve i parametri generati dal server e, a fine partita, chiama
 // onDone(risposta): la risposta viene poi controllata dal server.
 // API: WBGames.has(codice) · WBGames.mount(codice, contenitore, parametri, { onDone })
@@ -886,7 +886,104 @@
     }, opts.onDone);
   }
 
-  const GAMES = { memoria, numeri, colore_parola: coloreParola, riflessi, anagramma, luce, qr };
+  // ---------------------------------------------------------------------
+  // CACCIA AI COLORI (v19): usa cameraGame() sopra per la parte GENERICA
+  // (permesso, ciclo dei frame), con showVideo:true (serve vedere cosa si
+  // inquadra per mirare l'oggetto) e showBar di default (barra col
+  // progresso verso la soglia, poi il countdown del mantenimento).
+  // SPECIFICO: countColorPixels(), che converte ogni pixel in HSV e conta
+  // quelli nella tonalità del colore richiesto (con soglie minime di
+  // saturazione/luminosità per escludere grigio/bianco/nero). Sequenza di
+  // 5 colori generata dal server (stessa per la coppia, come "numeri"):
+  // si passa al colore successivo da soli quando almeno CACCIA_MIN_PIXELS
+  // pixel di quella tonalità restano inquadrati SENZA INTERRUZIONI per
+  // CACCIA_HOLD_MS (come "Accendi la luce", ma su tonalità invece che
+  // luminanza, e con un mantenimento più breve: qui l'oggetto va anche
+  // trovato e mirato, non basta accendere una luce). Nessun dato del
+  // sensore va al server: risposta { fatto: true }.
+  // ---------------------------------------------------------------------
+  const CACCIA_SAMPLE = 48;
+  const CACCIA_MIN_PIXELS = 300;   // su 48×48 = 2304 px: l'oggetto deve riempire una parte consistente del frame
+  const CACCIA_HOLD_MS = 1500;
+  const CACCIA_NOMI = { rosso: 'ROSSO', verde: 'VERDE', blu: 'BLU', giallo: 'GIALLO' };
+
+  function rgbToHsv(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    const v = max, d = max - min;
+    const s = max === 0 ? 0 : d / max;
+    let h = 0;
+    if (d !== 0) {
+      if (max === r) h = ((g - b) / d) % 6;
+      else if (max === g) h = (b - r) / d + 2;
+      else h = (r - g) / d + 4;
+      h *= 60;
+      if (h < 0) h += 360;
+    }
+    return { h, s, v };
+  }
+
+  // soglie di saturazione/luminosità minime comuni a tutti i colori: escludono
+  // grigio, bianco e nero (dove la tonalità non è affidabile)
+  function matchesColor(h, s, v, colore) {
+    if (s < 0.35 || v < 0.25) return false;
+    if (colore === 'rosso') return h < 18 || h > 342;
+    if (colore === 'giallo') return h >= 40 && h <= 70;
+    if (colore === 'verde') return h >= 90 && h <= 160;
+    if (colore === 'blu') return h >= 195 && h <= 255;
+    return false;
+  }
+
+  function countColorPixels(frame, colore) {
+    const d = frame.data;
+    let n = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      const hsv = rgbToHsv(d[i], d[i + 1], d[i + 2]);
+      if (matchesColor(hsv.h, hsv.s, hsv.v, colore)) n++;
+    }
+    return n;
+  }
+
+  function cacciaColori(box, params, opts) {
+    const seq = params.sequenza || [];
+    let idx = 0;
+    let aboveSince = null;
+
+    function testo(colore) {
+      const nome = CACCIA_NOMI[colore] || String(colore).toUpperCase();
+      return 'Trova qualcosa ' + nome + ' e inquadralo da vicino (' + (idx + 1) + '/' + seq.length + ')';
+    }
+
+    return cameraGame(box, {
+      sample: CACCIA_SAMPLE,
+      showVideo: true,
+      hint: 'A turno vengono richiesti 5 colori: trova un oggetto di quel colore in giro per casa e inquadralo da vicino finché la fotocamera lo riconosce per un secondo e mezzo di fila, poi si passa al colore successivo.',
+      onFrame(frame, ctrl) {
+        const colore = seq[idx];
+        const hot = countColorPixels(frame, colore);
+        const pct = Math.round(Math.min(100, (hot / CACCIA_MIN_PIXELS) * 100));
+        if (hot >= CACCIA_MIN_PIXELS) {
+          const now = Date.now();
+          if (aboveSince == null) aboveSince = now;
+          const elapsed = now - aboveSince;
+          if (elapsed >= CACCIA_HOLD_MS) {
+            idx++;
+            aboveSince = null;
+            if (idx >= seq.length) { ctrl.finish({ fatto: true }); return; }
+            ctrl.setLevel(0, testo(seq[idx]));
+          } else {
+            const left = Math.ceil((CACCIA_HOLD_MS - elapsed) / 1000);
+            ctrl.setLevel(pct, (CACCIA_NOMI[colore] || colore.toUpperCase()) + ' rilevato: tieni fermo per altri ' + left + ' s');
+          }
+        } else {
+          aboveSince = null;
+          ctrl.setLevel(pct, testo(colore));
+        }
+      },
+    }, opts.onDone);
+  }
+
+  const GAMES = { memoria, numeri, colore_parola: coloreParola, riflessi, anagramma, luce, qr, caccia_colori: cacciaColori };
 
   window.WBGames = {
     has: (code) => Object.prototype.hasOwnProperty.call(GAMES, code),
