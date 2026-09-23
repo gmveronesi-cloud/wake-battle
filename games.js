@@ -1,5 +1,5 @@
 'use strict';
-// Wake Battle — giochi (v17). Usato sia dall'app (sfida vera) sia da beta.html (prova).
+// Wake Battle — giochi (v18). Usato sia dall'app (sfida vera) sia da beta.html (prova).
 // Ogni gioco riceve i parametri generati dal server e, a fine partita, chiama
 // onDone(risposta): la risposta viene poi controllata dal server.
 // API: WBGames.has(codice) · WBGames.mount(codice, contenitore, parametri, { onDone })
@@ -47,7 +47,14 @@
   // onDone(risposta). Permesso negato/fotocamera assente -> messaggio con
   // "Riprova" (nessun timeout dedicato: il limite è quello della sveglia).
   // opts: { hint, sample (lato canvas interno, default 32),
-  //         intervalMs (default 120), onFrame(frame, ctrl) }
+  //         intervalMs (default 120), onFrame(frame, ctrl),
+  //         showVideo (default false: video nascosto, come "Accendi la
+  //           luce", dove basta un punto di luce e vedere l'inquadratura
+  //           non aiuta; true per i giochi dove serve inquadrare qualcosa
+  //           di preciso, es. QR/barcode),
+  //         showBar (default true: barra del livello; false per i giochi
+  //           dove non ha un significato continuo, es. QR/barcode: o si è
+  //           letto un codice o no, niente da mostrare in progressione) }
   function cameraGame(box, opts, onDone) {
     let stream = null;
     let stopLoop = null;
@@ -97,21 +104,25 @@
       video.srcObject = stream;
       video.playsInline = true;
       video.muted = true;
-      video.hidden = true;   // mai il feed live a schermo: solo la barra
+      video.hidden = !opts.showVideo;   // nascosto di default; visibile solo se il gioco chiede di inquadrare qualcosa di preciso
+      if (opts.showVideo) video.className = 'cam-video';
       await video.play().catch(() => {});
       if (dead) { stopStream(); return; }
       box.replaceChildren();
       box.dataset.phase = 'gioca';
       const note = el('p', '', 'game-note');
       box.appendChild(note);
-      const bar = el('div', null, 'bar game-bar cam-bar');
-      const fill = el('div');
-      bar.appendChild(fill);
-      box.appendChild(bar);
+      let fill = null;
+      if (opts.showBar !== false) {
+        const bar = el('div', null, 'bar game-bar cam-bar');
+        fill = el('div');
+        bar.appendChild(fill);
+        box.appendChild(bar);
+      }
       box.appendChild(video);
       const ctrl = {
         setLevel(pct, text) {
-          fill.style.width = Math.max(0, Math.min(100, pct)) + '%';
+          if (fill) fill.style.width = Math.max(0, Math.min(100, pct)) + '%';
           if (text != null) note.textContent = text;
         },
         finish(answer) {
@@ -821,18 +832,20 @@
   }
 
   // ---------------------------------------------------------------------
-  // QR O CODICE A BARRE (v17): usa cameraGame() sopra per la parte GENERICA
-  // (permesso, video nascosto, ciclo dei frame). SPECIFICO: decodeFrame(),
-  // che usa la libreria ZXing (vendor/zxing.js, inclusa nel sito senza CDN;
-  // nessun worker/wasm/blob, quindi CSP invariata) per cercare un QR o un
-  // codice a barre in ogni frame. A differenza di "Accendi la luce" non
-  // serve nessun tempo di mantenimento: basta UNA lettura valida (i formati
-  // hanno un controllo di integrità incorporato, niente falsi positivi) e
-  // si finisce subito. Frame più grande del default (360 invece di 32/48)
-  // perché decodificare richiede molto più dettaglio della sola luminosità
-  // media; scansione ogni 300 ms (il decoder è più pesante di un semplice
-  // conteggio di pixel). Nessun dato del sensore va al server: risposta
-  // { fatto: true }.
+  // QR O CODICE A BARRE (v18): usa cameraGame() sopra per la parte GENERICA
+  // (permesso, ciclo dei frame), ma A DIFFERENZA di "Accendi la luce" con
+  // showVideo:true (bisogna vedere cosa si sta inquadrando per mirare bene)
+  // e showBar:false (niente barra: o un codice è stato letto o no, non c'è
+  // un livello progressivo da mostrare). SPECIFICO: decodeFrame(), che usa
+  // la libreria ZXing (vendor/zxing.js, inclusa nel sito senza CDN; nessun
+  // worker/wasm/blob, quindi CSP invariata) per cercare un QR o un codice a
+  // barre in ogni frame. Non serve nessun tempo di mantenimento: basta UNA
+  // lettura valida (i formati hanno un controllo di integrità incorporato,
+  // niente falsi positivi) e si finisce subito. Frame più grande del
+  // default (360 invece di 32/48) perché decodificare richiede molto più
+  // dettaglio della sola luminosità media; scansione ogni 300 ms (il
+  // decoder è più pesante di un semplice conteggio di pixel). Nessun dato
+  // del sensore va al server: risposta { fatto: true }.
   // ---------------------------------------------------------------------
   const QR_SAMPLE = 360;
   const QR_INTERVAL_MS = 300;
@@ -858,14 +871,16 @@
     return cameraGame(box, {
       sample: QR_SAMPLE,
       intervalMs: QR_INTERVAL_MS,
+      showVideo: true,
+      showBar: false,
       hint: 'Inquadra un QR o un codice a barre qualsiasi (va bene un\'etichetta o una confezione qualunque): appena viene letto si passa da soli.',
       onFrame(frame, ctrl) {
         const text = decodeFrame(frame, reader);
         if (text != null) {
-          ctrl.setLevel(100, 'Codice letto: fatto!');
+          ctrl.setLevel(null, 'Codice letto: fatto!');
           ctrl.finish({ fatto: true });
         } else {
-          ctrl.setLevel(0, 'Cerco un codice…');
+          ctrl.setLevel(null, 'Inquadra il codice…');
         }
       },
     }, opts.onDone);

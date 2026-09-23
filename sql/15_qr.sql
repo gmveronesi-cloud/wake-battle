@@ -5,9 +5,11 @@
 -- (rilanciarlo per sbaglio non fa danni).
 --
 -- Regole (decise il 23/09/2026 in questa chat, vedi anche docs/DECISIONI.md):
---  - Il client chiede il permesso della fotocamera (posteriore), NON
---    mostra il video in diretta: solo una barra (riusa cameraGame() già
---    scritto per "Accendi la luce").
+--  - Il client chiede il permesso della fotocamera (posteriore) e MOSTRA il
+--    video in diretta (serve per mirare il codice), senza barra (riusa
+--    cameraGame() già scritto per "Accendi la luce", con showVideo:true e
+--    showBar:false: a differenza di "Accendi la luce" qui vedere
+--    l'inquadratura aiuta, e non c'è un livello progressivo da mostrare).
 --  - Basta UNA lettura valida di un QR o di un codice a barre qualsiasi
 --    (libreria ZXing lato client, vendor/zxing.js incluso nel sito senza
 --    CDN: nessun worker/wasm/blob, CSP invariata) per finire subito: i

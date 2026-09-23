@@ -176,3 +176,7 @@ button.game-start { font-size: 22px; padding: 20px; background: var(--ok); color
    barra del livello rilevato (luminosità, e in futuro altri giochi) */
 .cam-bar { height: 22px; border-radius: 11px; margin: 18px 0 6px; }
 .cam-bar > div { transition: width .15s linear; }
+
+/* Anteprima video in diretta (v18, cameraGame({showVideo:true}) — es. QR o
+   codice a barre: serve vedere cosa si sta inquadrando per mirare bene) */
+.cam-video { width: 100%; max-width: 360px; border-radius: 12px; margin: 14px 0; background: #000; }
