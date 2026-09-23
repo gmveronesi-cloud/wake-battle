@@ -3,6 +3,13 @@
 Log dei passi completati, tenuto separato da STATO.md (che ora contiene solo lo stato corrente).
 Le regole di gioco restano SOLO in DECISIONI.md: qui si racconta solo cosa è stato fatto e quando.
 
+## Passo 3.7 — Accendi la luce (v14 pronta nel repo, 23/09, primo gioco con fotocamera)
+- Regole tecniche mancanti in DECISIONI.md (soglia, tempi, errori, verifica server) chieste e decise in questa chat: video nascosto (niente feed live, solo barra del livello), soglia fissa 120/255 su 5 frame di fila, nessun timeout dedicato (vale il limite dei 5 minuti), nessun dato reale del sensore verificato dal server.
+- games.js: aggiunte funzioni GENERICHE riusabili da tutti i giochi con fotocamera — `cameraLoop()` (cattura un frame ogni tot ms su un canvas interno) e `cameraGame()` (permesso, video nascosto, barra, gestione errori/retry) — separate e commentate rispetto alla parte SPECIFICA di "luce" (`grayAvg()`, soglia, frame consecutivi). I prossimi giochi con fotocamera (QR, Caccia ai colori, Occhi aperti, Trova l'oggetto) riusano `cameraGame()` cambiando solo `onFrame`.
+- SQL 14: solo wb_gp_luce/wb_ca_luce + riga nei dispatcher (pattern del 07). Params `{gioco:'luce'}` (niente da generare), risposta `{fatto:true}`: il server non può verificare cosa inquadra davvero la fotocamera, quindi controlla solo la forma della risposta.
+- Test: test_14.py (41 controlli) + ui_test_14.js (16 controlli, beta + permesso negato + sfida vera). Prima volta con una fotocamera "finta" in Chromium per i test UI: flag `--use-fake-device-for-media-stream`/`--use-file-for-fake-video-capture` in ui_lib.js `start()` con un video generato a mano (`test/fixtures/luce.y4m`, 2 s buio poi 2 s luce, in loop); il permesso negato si testa iniettando un `getUserMedia` che rifiuta in un contesto a parte.
+- style.css: classe `.cam-bar` (riusa `.bar`/`.game-bar`) per la barra del livello, pensata comune a tutti i giochi con fotocamera.
+
 ## Passo 3.3 — Colore della parola (v7 pronta nel repo, 22/09)
 - v7: ordine dei 6 pulsanti mescolato a ogni turno (keyOrder in games.js, deterministico dai parametri: uguale per la coppia, nessun SQL nuovo; data-ordine sul box per i test).
 - SQL 06: sostituiva wb_game_params/wb_check_answer con dentro Numeri (05) + Memoria a round (04) + Memoria vecchia (03) + colore_parola. Superato dal 07 (refactor a dispatcher): stesso comportamento, un file a parte per gioco.

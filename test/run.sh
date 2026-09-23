@@ -88,3 +88,16 @@ if [ -f sql/13_anagramma_parole.sql ]; then
   echo "--- 13 rilanciato due volte: nessun errore ---"
   $P -d wb -f sql/13_anagramma_parole.sql && echo ok
 fi
+if [ -f sql/14_luce.sql ]; then
+  L="$P -d wb -f sql/03_giochi.sql -f sql/04_memoria_round.sql -f sql/05_numeri.sql -f sql/06_colore_parola.sql -f sql/07_refactor_giochi.sql -f sql/08_intruso.sql -f sql/09_rimuovi_intruso.sql -f sql/10_riflessi.sql -f sql/11_riflessi_babbo.sql -f sql/12_anagramma.sql -f sql/13_anagramma_parole.sql -f sql/14_luce.sql"
+  echo "--- 02 ancora valido dopo 14 ---";  reset_db; $L; python3 test/test_02.py
+  echo "--- 04 (Memoria) ancora valido dopo 14 ---"; reset_db; $L; python3 test/test_04.py
+  echo "--- 05 (Numeri) ancora valido dopo 14 ---"; reset_db; $L; python3 test/test_05.py
+  echo "--- 06 (Colore della parola) ancora valido dopo 14 ---"; reset_db; $L; python3 test/test_06.py
+  echo "--- 09 (rimozione intruso) ancora valido dopo 14 ---"; reset_db; $L; python3 test/test_09.py
+  echo "--- 11 (Riflessi Babbo/Schiacciami) ancora valido dopo 14 ---"; reset_db; $L; python3 test/test_11.py
+  echo "--- test 12 (Anagramma) ancora valido dopo 14 ---"; reset_db; $L; python3 test/test_12.py
+  echo "--- test 14 (Accendi la luce) ---"; reset_db; $L; python3 test/test_14.py
+  echo "--- 14 rilanciato due volte: nessun errore ---"
+  $P -d wb -f sql/14_luce.sql && echo ok
+fi

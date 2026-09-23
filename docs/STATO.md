@@ -1,4 +1,4 @@
-# Wake Battle — Stato lavori (aggiornato 23/09/2026)
+# Wake Battle — Stato lavori (aggiornato 23/09/2026, sera)
 
 Stato corrente dei giochi e prossimi passi. Il log dei passi chiusi è in docs/STORICO.md.
 Le regole di gioco sono SOLO in docs/DECISIONI.md (prevale su tutto): qui non ripeterle, solo lo stato.
@@ -18,12 +18,19 @@ Le regole di gioco sono SOLO in docs/DECISIONI.md (prevale su tutto): qui non ri
 | Colore della parola | ✓ (v7) | 06 eseguito; **sql/07_refactor_giochi.sql** ancora da eseguire (facoltativo, vedi sotto) | ✓ (già attivata da Gianmarco col 06) |
 | Riflessi | ✓ (v11, "Babbo/Schiacciami") | 10 eseguito (versione vecchia, superata); **sql/11_riflessi_babbo.sql** da eseguire | da attivare dopo la prova in beta |
 | Anagramma | ✓ (v12) | **sql/12_anagramma.sql** e **sql/13_anagramma_parole.sql** da eseguire | da attivare dopo la prova in beta |
-| QR/barcode, luce, caccia ai colori, occhi aperti, trova l'oggetto | da fare | — | — |
+| Accendi la luce | ✓ (v14, primo gioco con fotocamera) | **sql/14_luce.sql** da eseguire | da attivare dopo la prova in beta (verificare su telefono vero: vedi sotto) |
+| QR/barcode, caccia ai colori, occhi aperti, trova l'oggetto | da fare | — | — |
 | Esercizi (video) | da fare | — | — |
 
-**PROSSIMO passo (nuova chat): il prossimo gioco dalla lista** — o uno dei "fisici" (QR/barcode, luce, caccia ai colori, occhi aperti, trova l'oggetto: richiedono fotocamera, da verificare sul telefono) oppure Esercizi (video registrato nell'app).
+**PROSSIMO passo (nuova chat): il prossimo gioco dalla lista** — uno degli altri "fisici" con fotocamera (QR/barcode, caccia ai colori, occhi aperti, trova l'oggetto: riusano le funzioni generiche di games.js scritte per Accendi la luce, cambia solo l'analisi del frame) oppure Esercizi (video registrato nell'app).
 
 ## Da fare ora (Gianmarco)
+Accendi la luce (nuovo, primo gioco con fotocamera — IMPORTANTE: provare su telefono vero, non solo in ufficio/browser):
+1. Eseguire `sql/14_luce.sql` in Supabase (richiede 01..13 già eseguiti).
+2. Provare in beta il gioco "Accendi la luce" DA UN TELEFONO: dà il permesso della fotocamera (posteriore), NON mostra il video in diretta (solo una barra col livello di luce rilevato). Punta verso una lampada spenta, poi accendila: quando la barra segnala abbastanza luce per un attimo, il gioco passa da solo. Se il permesso viene negato o la fotocamera non è disponibile, appare un messaggio con "Riprova". Se in pratica non funziona bene (soglia sbagliata, troppo lenta, falsi positivi) dimmelo: la regola prevede che si possa togliere questo gioco se risulta inaffidabile.
+3. Se va bene, attivare nella sfida vera con:
+   `update public.challenge_types set enabled = true, game_live = true where code = 'luce';`
+
 Anagramma (nuovo):
 1. Eseguire `sql/12_anagramma.sql` e poi `sql/13_anagramma_parole.sql` in Supabase (richiede 01..11 già eseguiti; il 13 amplia la lista da 79 a 146 parole possibili, nessun'altra regola cambia).
 2. Provare in beta il gioco "Anagramma": 5 parole di fila, lettere mescolate come tessere da toccare nell'ordine giusto per ricomporre la parola. Un tocco sbagliato lampeggia di rosso senza penalità: si continua sulla stessa parola (nessuna ripartenza). Parola giusta → passa da sola alla successiva.
@@ -53,13 +60,14 @@ Da sql/07 in poi, wb_game_params/wb_check_answer sono dispatcher: ogni gioco ha 
 - Un gioco nuovo aggiunge solo le sue wb_gp_<gioco>/wb_ca_<gioco> + una riga in ciascun dispatcher: non ricopiare i giochi già fatti (vedi sopra).
 
 ## Test (cartella `test/`)
-- Avvio: `sh test/setup.sh && sh test/tutti.sh` (~3 min).
-- SQL: test_02 (83), test_03 (63, DB senza 04), test_04 (53, rilanciato anche dopo 05/06/07/09/11/12), test_05 (45, rilanciato dopo 06/07/09/11/12), test_06 (61, rilanciato dopo 07/09/11/12), test_09 (11, rimozione Trova l'intruso, rilanciato dopo 11/12), test_11 (46, Riflessi "Babbo/Schiacciami", rilanciato dopo 12), test_12 (52, Anagramma); run.sh. prep_db.sh carica 01..03 + tutti i sql/0N_… presenti (`senza04` si ferma al 03). Boilerplate comune (connessione, orologio finto, ruoli, rpc/jrpc, contatori) in test/_lib.py. test_10.py/ui_test_10.js (prima versione di Riflessi) eliminati: sostituiti dall'11, stesso trattamento riservato a test_08/ui_test_08 quando è sparito Trova l'intruso.
-- UI: ui_test (33), ui_test_03 (43), ui_test_04 (34), ui_test_05 (27), ui_test_06 (32), ui_test_11 (22, Riflessi "Babbo/Schiacciami"), ui_test_12 (23, Anagramma); tutti.sh prende da solo ogni ui_test_0N.js.
+- Avvio: `sh test/setup.sh && sh test/tutti.sh` (~3-4 min).
+- SQL: test_02 (83), test_03 (63, DB senza 04), test_04 (53, rilanciato anche dopo 05/06/07/09/11/12/14), test_05 (45, rilanciato dopo 06/07/09/11/12/14), test_06 (61, rilanciato dopo 07/09/11/12/14), test_09 (11, rimozione Trova l'intruso, rilanciato dopo 11/12/14), test_11 (46, Riflessi "Babbo/Schiacciami", rilanciato dopo 12/14), test_12 (52, Anagramma, rilanciato dopo 14), test_14 (41, Accendi la luce); run.sh. prep_db.sh carica 01..03 + tutti i sql/0N_… presenti (`senza04` si ferma al 03). Boilerplate comune (connessione, orologio finto, ruoli, rpc/jrpc, contatori) in test/_lib.py. test_10.py/ui_test_10.js (prima versione di Riflessi) eliminati: sostituiti dall'11, stesso trattamento riservato a test_08/ui_test_08 quando è sparito Trova l'intruso.
+- UI: ui_test (33), ui_test_03 (43), ui_test_04 (34), ui_test_05 (27), ui_test_06 (32), ui_test_11 (22, Riflessi "Babbo/Schiacciami"), ui_test_12 (23, Anagramma), ui_test_14 (16, Accendi la luce); tutti.sh prende da solo ogni ui_test_0N.js.
 - Anagramma: solo 40 tentativi generati (non 200 come gli altri giochi), perché con lettere per esteso (non numeri) 200 supererebbero il limite di 20000 byte di beta_check/complete_game; qui va bene perché un errore non consuma un tentativo (tentativi illimitati sulla stessa parola).
+- Accendi la luce (primo gioco con fotocamera): ui_test_14 usa la fotocamera FINTA di Chromium (flag `--use-fake-device-for-media-stream`/`--use-fake-ui-for-media-stream` in ui_lib.js `start()`, valide per tutti gli ui_test anche se solo la luce le usa) con un video di test `test/fixtures/luce.y4m` (generato a mano: 2 s buio poi 2 s luce, in loop, 64×64 grigio). Il "permesso negato" si testa invece iniettando un `getUserMedia` che rifiuta con `ctx.addInitScript` in un contesto separato: verifica il messaggio d'errore e "Riprova".
 - Orologio finto: wb_now legge 'wb.fake_now'.
 
 ## Poi
-- Giochi con fotocamera: verifica sul telefono, librerie incluse nel sito (niente CDN; CSP da aggiornare se servono worker/wasm/blob).
+- Altri giochi con fotocamera (QR/barcode, caccia ai colori, occhi aperti, trova l'oggetto): riusano cameraLoop()/cameraGame() in games.js (funzioni generiche scritte per Accendi la luce), cambia solo la funzione di analisi del frame. Verifica sul telefono per ognuno; librerie incluse nel sito (niente CDN; CSP da aggiornare se servono worker/wasm/blob, es. per un decoder QR).
 - Esercizi: video nell'app (bassa risoluzione, max 50 MB), tempo fermato a "Fine registrazione", visibile solo alla coppia, cancellato dopo 48 h.
 - Passo 4 — Comandi iOS (sveglie di controllo, comando "WB Fatto", automazione serale).

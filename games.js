@@ -1,5 +1,5 @@
 'use strict';
-// Wake Battle — giochi (v12). Usato sia dall'app (sfida vera) sia da beta.html (prova).
+// Wake Battle — giochi (v14). Usato sia dall'app (sfida vera) sia da beta.html (prova).
 // Ogni gioco riceve i parametri generati dal server e, a fine partita, chiama
 // onDone(risposta): la risposta viene poi controllata dal server.
 // API: WBGames.has(codice) · WBGames.mount(codice, contenitore, parametri, { onDone })
@@ -11,6 +11,126 @@
     if (text != null) e.textContent = text;
     if (cls) e.className = cls;
     return e;
+  }
+
+  // =====================================================================
+  // FOTOCAMERA — funzioni GENERICHE (v14), riusabili da TUTTI i giochi con
+  // fotocamera (Accendi la luce, e poi QR/barcode, Caccia ai colori, Occhi
+  // aperti, Trova l'oggetto): chiedono il permesso, creano un <video>
+  // nascosto (mai il feed live a schermo) e un <canvas> interno, e fanno
+  // partire un ciclo che cattura un frame ogni tot ms e lo passa alla
+  // funzione di analisi DEL GIOCO SPECIFICO. Un gioco nuovo con fotocamera
+  // riusa cameraGame() così com'è e scrive solo la sua onFrame(frame, ctrl)
+  // (vedi più sotto "ACCENDI LA LUCE" per un esempio).
+  // =====================================================================
+
+  // cattura un frame ogni intervalMs: disegna il <video> su un <canvas>
+  // interno (mai mostrato) e chiama onFrame(ImageData a colori, lato
+  // sample × sample px). Ritorna una funzione per fermare il ciclo.
+  function cameraLoop(video, sample, onFrame, intervalMs) {
+    const canvas = document.createElement('canvas');
+    canvas.width = sample;
+    canvas.height = sample;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    let stopped = false;
+    const timer = setInterval(() => {
+      if (stopped || video.readyState < 2) return;
+      ctx.drawImage(video, 0, 0, sample, sample);
+      onFrame(ctx.getImageData(0, 0, sample, sample));
+    }, intervalMs);
+    return () => { stopped = true; clearInterval(timer); };
+  }
+
+  // UI comune di un gioco con fotocamera: intro con spiegazione + "Inizia"
+  // -> chiede il permesso -> barra generica aggiornabile dal gioco tramite
+  // ctrl.setLevel() -> ctrl.finish(risposta) chiude la fotocamera e chiama
+  // onDone(risposta). Permesso negato/fotocamera assente -> messaggio con
+  // "Riprova" (nessun timeout dedicato: il limite è quello della sveglia).
+  // opts: { hint, sample (lato canvas interno, default 32),
+  //         intervalMs (default 120), onFrame(frame, ctrl) }
+  function cameraGame(box, opts, onDone) {
+    let stream = null;
+    let stopLoop = null;
+    let dead = false;
+
+    function stopStream() {
+      if (stopLoop) { stopLoop(); stopLoop = null; }
+      if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; }
+    }
+
+    function intro() {
+      box.replaceChildren();
+      box.dataset.phase = 'intro';
+      box.appendChild(el('p', opts.hint, 'hint'));
+      const b = el('button', 'Inizia', 'game-start');
+      b.type = 'button';
+      b.addEventListener('click', start);
+      box.appendChild(b);
+    }
+
+    function errorUI(text) {
+      box.replaceChildren();
+      box.dataset.phase = 'errore-camera';
+      box.appendChild(el('p', text, 'game-note bad'));
+      const b = el('button', 'Riprova', 'game-start');
+      b.type = 'button';
+      b.addEventListener('click', start);
+      box.appendChild(b);
+    }
+
+    async function start() {
+      box.replaceChildren();
+      box.dataset.phase = 'permesso';
+      box.appendChild(el('p', 'Attendo il permesso della fotocamera…', 'game-note'));
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        errorUI('Fotocamera non disponibile su questo browser.');
+        return;
+      }
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      } catch (e) {
+        errorUI('Fotocamera non disponibile o permesso negato.');
+        return;
+      }
+      if (dead) { stream.getTracks().forEach((t) => t.stop()); stream = null; return; }
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      video.playsInline = true;
+      video.muted = true;
+      video.hidden = true;   // mai il feed live a schermo: solo la barra
+      await video.play().catch(() => {});
+      if (dead) { stopStream(); return; }
+      box.replaceChildren();
+      box.dataset.phase = 'gioca';
+      const note = el('p', '', 'game-note');
+      box.appendChild(note);
+      const bar = el('div', null, 'bar game-bar cam-bar');
+      const fill = el('div');
+      bar.appendChild(fill);
+      box.appendChild(bar);
+      box.appendChild(video);
+      const ctrl = {
+        setLevel(pct, text) {
+          fill.style.width = Math.max(0, Math.min(100, pct)) + '%';
+          if (text != null) note.textContent = text;
+        },
+        finish(answer) {
+          if (dead || box.dataset.phase !== 'gioca') return;
+          stopStream();
+          box.dataset.phase = 'fine';
+          note.textContent = 'Controllo…';
+          onDone(answer);
+        },
+      };
+      stopLoop = cameraLoop(video, opts.sample || 32, (frame) => opts.onFrame(frame, ctrl), opts.intervalMs || 120);
+    }
+
+    intro();
+    return {
+      destroy() { dead = true; stopStream(); box.replaceChildren(); delete box.dataset.phase; },
+      // il server ha rifiutato la risposta: si richiede di nuovo (nessun dato da rigenerare)
+      retry() { if (!dead) { stopStream(); start(); } },
+    };
   }
 
   // ---------------------------------------------------------------------
@@ -646,7 +766,39 @@
     };
   }
 
-  const GAMES = { memoria, numeri, colore_parola: coloreParola, riflessi, anagramma };
+  // ---------------------------------------------------------------------
+  // ACCENDI LA LUCE (v14): usa cameraGame() sopra per tutta la parte
+  // GENERICA (permesso, video nascosto, ciclo dei frame). SPECIFICO di
+  // questo gioco: grayAvg() e la soglia/frame-consecutivi qui sotto.
+  // "Accesa" = media dei toni di grigio del frame sopra LUCE_SOGLIA per
+  // almeno LUCE_FRAME_OK frame di fila (evita falsi positivi da un
+  // singolo flash). La barra mostra il livello in tempo reale.
+  // Nessun dato del sensore va al server: risposta { fatto: true }.
+  // ---------------------------------------------------------------------
+  const LUCE_SOGLIA = 120;      // media grigio 0-255 sopra cui è "accesa"
+  const LUCE_FRAME_OK = 5;      // frame consecutivi sopra soglia per confermare
+
+  function grayAvg(frame) {
+    const d = frame.data;
+    let sum = 0;
+    for (let i = 0; i < d.length; i += 4) sum += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+    return sum / (d.length / 4);
+  }
+
+  function luce(box, params, opts) {
+    let streak = 0;
+    return cameraGame(box, {
+      hint: 'Punta la fotocamera verso una lampada spenta, poi accendila: appena rileva la luce si passa da soli.',
+      onFrame(frame, ctrl) {
+        const avg = grayAvg(frame);
+        streak = avg > LUCE_SOGLIA ? streak + 1 : 0;
+        ctrl.setLevel(Math.round((avg / 255) * 100), 'Luce rilevata: ' + Math.round((avg / 255) * 100) + '%');
+        if (streak >= LUCE_FRAME_OK) ctrl.finish({ fatto: true });
+      },
+    }, opts.onDone);
+  }
+
+  const GAMES = { memoria, numeri, colore_parola: coloreParola, riflessi, anagramma, luce };
 
   window.WBGames = {
     has: (code) => Object.prototype.hasOwnProperty.call(GAMES, code),
