@@ -55,7 +55,7 @@ check("params round 4 (risposta da 5)", bc(ans(0), {"round": 4, "sequenze": S}),
 check("params sequenza corta", bc(ans(0), {"round": 5, "sequenze": [S[0][:4]]}), False)
 check("risposta riflessi su gioco memoria", bc(ans(0), p, "memoria"), False)
 check("risposta riflessi su gioco numeri", bc(ans(0), p, "numeri"), False)
-check("gioco sconosciuto", bc(ans(0), p, "qr"), False)
+check("gioco sconosciuto", bc(ans(0), p, "barcode"), False)
 admin()
 cur.execute("select public.wb_check_answer('riflessi', null, null) is null, public.wb_check_answer('riflessi', %s::jsonb, '{}') is null, public.wb_check_answer('riflessi', %s::jsonb, '{\"tentativo\": null}') is null", (json.dumps(p), json.dumps(p)))
 check("mai NULL", cur.fetchone(), (False, False, False))
