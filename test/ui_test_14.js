@@ -1,5 +1,6 @@
 // Test UI passo 3.7: Accendi la luce (beta + fotocamera negata + sfida vera).
-// Fotocamera finta (vedi ui_lib.js): video di test buio 2 s poi luce 2 s, in loop.
+// Fotocamera finta (vedi ui_lib.js): video di test buio 2 s poi luce forte 12 s, in loop
+// (soglia LUCE_SOGLIA e durata minima LUCE_MS_MIN=10s sono in games.js).
 const { T, check, db, rpc, log, openApp, txt, visible, shot, reload, tabTo, setupCouple, start, finish } = require('./ui_lib');
 
 const attr = (page, sel, a) => page.getAttribute(sel, a);
@@ -9,7 +10,7 @@ const barPct = async (page, sel) => {
 };
 
 (async () => {
-  const browser = await start();
+  const browser = await start({ camera: true });
   const { A, B } = await setupCouple();
   T.fakeNow = '2026-09-20 10:00:00+02';
   const { page, errors } = await openApp(browser, A, 'gianmarco@x.it');
@@ -24,13 +25,19 @@ const barPct = async (page, sel) => {
   check('beta: spiegazione fotocamera/luce', intro.includes('fotocamera') && intro.toLowerCase().includes('luce'), intro);
   check('beta: niente video/barra prima di Inizia', (await page.locator('#b-game video, #b-game .cam-bar').count()) === 0);
   await shot(page, '66_luce_beta_intro');
+  const t0 = Date.now();
   await page.click('#b-game .game-start');
   await page.waitForSelector('#b-game[data-phase="gioca"] .cam-bar', { timeout: 15000 });
   check('beta: video presente ma nascosto (niente feed live)', await page.locator('#b-game video').isHidden());
   const pct1 = await barPct(page, '#b-game');
   check('beta: barra livello presente (0-100)', pct1 >= 0 && pct1 <= 100, pct1);
   await shot(page, '67_luce_beta_gioca');
-  await page.waitForSelector('#b-result:not([hidden])', { timeout: 15000 });
+  // durante il buio iniziale (soglia non raggiunta) niente countdown
+  check('beta: niente countdown durante il buio', !(await txt(page, '#b-game .game-note')).includes('tieni ferma'));
+  await page.waitForSelector('#b-game .game-note:has-text("tieni ferma")', { timeout: 15000 });
+  await shot(page, '671_luce_beta_countdown');
+  await page.waitForSelector('#b-result:not([hidden])', { timeout: 20000 });
+  check('beta: soglia mantenuta almeno 10 s prima di completare (non istantaneo)', Date.now() - t0 >= 9000, Date.now() - t0);
   const bc = log.filter((x) => x.fn === 'beta_check').pop();
   check('beta: risposta = {fatto:true}', JSON.stringify(bc.body.p_answer), JSON.stringify({ fatto: true }));
   check('beta: verificata dal server', bc.r.corretto === true);
@@ -75,7 +82,8 @@ const barPct = async (page, sel) => {
   // cambio scheda a metà (buio, non ancora completato): non deve far ripartire il gioco
   await tabTo(page, 'sfida'); await tabTo(page, 'oggi');
   check('lun: cambio scheda non ricomincia', (await attr(page, '#o-game', 'data-phase')) !== 'intro');
-  await page.waitForSelector('#o-result:not([hidden])', { timeout: 15000 });
+  await page.waitForSelector('#o-game .game-note:has-text("tieni ferma")', { timeout: 15000 });
+  await page.waitForSelector('#o-result:not([hidden])', { timeout: 20000 });
   const cg = log.filter((x) => x.fn === 'complete_game').pop();
   check('lun: complete_game ok con {fatto:true}', cg.r.ok === true && cg.body.p_answer.fatto === true, cg.r);
   await shot(page, '72_luce_oggi_fatto');

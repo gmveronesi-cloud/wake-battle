@@ -18,16 +18,16 @@ Le regole di gioco sono SOLO in docs/DECISIONI.md (prevale su tutto): qui non ri
 | Colore della parola | ✓ (v7) | 06 eseguito; **sql/07_refactor_giochi.sql** ancora da eseguire (facoltativo, vedi sotto) | ✓ (già attivata da Gianmarco col 06) |
 | Riflessi | ✓ (v11, "Babbo/Schiacciami") | 10 eseguito (versione vecchia, superata); **sql/11_riflessi_babbo.sql** da eseguire | da attivare dopo la prova in beta |
 | Anagramma | ✓ (v12) | **sql/12_anagramma.sql** e **sql/13_anagramma_parole.sql** da eseguire | da attivare dopo la prova in beta |
-| Accendi la luce | ✓ (v14, primo gioco con fotocamera) | **sql/14_luce.sql** da eseguire | da attivare dopo la prova in beta (verificare su telefono vero: vedi sotto) |
+| Accendi la luce | ✓ (v15, tarata dopo prova reale) | **sql/14_luce.sql** da eseguire (nessun nuovo file: la taratura è solo lato client) | da attivare dopo la prova in beta (riverificare su telefono vero: vedi sotto) |
 | QR/barcode, caccia ai colori, occhi aperti, trova l'oggetto | da fare | — | — |
 | Esercizi (video) | da fare | — | — |
 
 **PROSSIMO passo (nuova chat): il prossimo gioco dalla lista** — uno degli altri "fisici" con fotocamera (QR/barcode, caccia ai colori, occhi aperti, trova l'oggetto: riusano le funzioni generiche di games.js scritte per Accendi la luce, cambia solo l'analisi del frame) oppure Esercizi (video registrato nell'app).
 
 ## Da fare ora (Gianmarco)
-Accendi la luce (nuovo, primo gioco con fotocamera — IMPORTANTE: provare su telefono vero, non solo in ufficio/browser):
-1. Eseguire `sql/14_luce.sql` in Supabase (richiede 01..13 già eseguiti).
-2. Provare in beta il gioco "Accendi la luce" DA UN TELEFONO: dà il permesso della fotocamera (posteriore), NON mostra il video in diretta (solo una barra col livello di luce rilevato). Punta verso una lampada spenta, poi accendila: quando la barra segnala abbastanza luce per un attimo, il gioco passa da solo. Se il permesso viene negato o la fotocamera non è disponibile, appare un messaggio con "Riprova". Se in pratica non funziona bene (soglia sbagliata, troppo lenta, falsi positivi) dimmelo: la regola prevede che si possa togliere questo gioco se risulta inaffidabile.
+Accendi la luce (primo gioco con fotocamera — taratura aggiornata dopo la prima prova reale del 23/09: soglia molto più alta e luce da tenere ferma 10 secondi, non più istantanea):
+1. Se non ancora fatto: eseguire `sql/14_luce.sql` in Supabase (richiede 01..13 già eseguiti). Se l'avevi già eseguito la volta scorsa NON serve rilanciarlo: questa modifica è solo lato client (games.js), nessun nuovo file SQL.
+2. Riprovare in beta il gioco "Accendi la luce" DA UN TELEFONO: permesso fotocamera (posteriore), NON mostra il video in diretta (solo una barra col livello di luce rilevato). Punta verso una luce ben forte e tienila inquadrata: mentre resta sopra soglia la barra mostra il countdown dei secondi mancanti (10 s), il gioco passa da solo solo se la luce resta forte SENZA INTERRUZIONI per tutti i 10 secondi. Se in pratica la soglia non è ancora quella giusta (troppo/poco alta) o il tempo non va bene, dimmi i numeri che preferisci: soglia attuale 200/255, tempo attuale 10 s.
 3. Se va bene, attivare nella sfida vera con:
    `update public.challenge_types set enabled = true, game_live = true where code = 'luce';`
 
@@ -62,9 +62,9 @@ Da sql/07 in poi, wb_game_params/wb_check_answer sono dispatcher: ogni gioco ha 
 ## Test (cartella `test/`)
 - Avvio: `sh test/setup.sh && sh test/tutti.sh` (~3-4 min).
 - SQL: test_02 (83), test_03 (63, DB senza 04), test_04 (53, rilanciato anche dopo 05/06/07/09/11/12/14), test_05 (45, rilanciato dopo 06/07/09/11/12/14), test_06 (61, rilanciato dopo 07/09/11/12/14), test_09 (11, rimozione Trova l'intruso, rilanciato dopo 11/12/14), test_11 (46, Riflessi "Babbo/Schiacciami", rilanciato dopo 12/14), test_12 (52, Anagramma, rilanciato dopo 14), test_14 (41, Accendi la luce); run.sh. prep_db.sh carica 01..03 + tutti i sql/0N_… presenti (`senza04` si ferma al 03). Boilerplate comune (connessione, orologio finto, ruoli, rpc/jrpc, contatori) in test/_lib.py. test_10.py/ui_test_10.js (prima versione di Riflessi) eliminati: sostituiti dall'11, stesso trattamento riservato a test_08/ui_test_08 quando è sparito Trova l'intruso.
-- UI: ui_test (33), ui_test_03 (43), ui_test_04 (34), ui_test_05 (27), ui_test_06 (32), ui_test_11 (22, Riflessi "Babbo/Schiacciami"), ui_test_12 (23, Anagramma), ui_test_14 (16, Accendi la luce); tutti.sh prende da solo ogni ui_test_0N.js.
+- UI: ui_test (33), ui_test_03 (43), ui_test_04 (34), ui_test_05 (27), ui_test_06 (32), ui_test_11 (22, Riflessi "Babbo/Schiacciami"), ui_test_12 (23, Anagramma), ui_test_14 (18, Accendi la luce); tutti.sh prende da solo ogni ui_test_0N.js.
 - Anagramma: solo 40 tentativi generati (non 200 come gli altri giochi), perché con lettere per esteso (non numeri) 200 supererebbero il limite di 20000 byte di beta_check/complete_game; qui va bene perché un errore non consuma un tentativo (tentativi illimitati sulla stessa parola).
-- Accendi la luce (primo gioco con fotocamera): ui_test_14 usa la fotocamera FINTA di Chromium (flag `--use-fake-device-for-media-stream`/`--use-fake-ui-for-media-stream` in ui_lib.js `start()`, valide per tutti gli ui_test anche se solo la luce le usa) con un video di test `test/fixtures/luce.y4m` (generato a mano: 2 s buio poi 2 s luce, in loop, 64×64 grigio). Il "permesso negato" si testa invece iniettando un `getUserMedia` che rifiuta con `ctx.addInitScript` in un contesto separato: verifica il messaggio d'errore e "Riprova".
+- Accendi la luce (primo gioco con fotocamera; soglia 200/255 mantenuta 10 s di fila, tarata il 23/09 dopo la prima prova reale — era 120/255 per 5 frame): ui_test_14 chiama `start({camera:true})` per usare la fotocamera FINTA di Chromium (flag `--use-fake-device-for-media-stream`/`--use-fake-ui-for-media-stream` in ui_lib.js, SOLO per questo test: rallentano/alterano i timer interni di Chromium e rompono i tempi stretti di Riflessi se attivi per tutti, visto rompersi quando erano globali) con un video di test `test/fixtures/luce.y4m` (generato a mano: 2 s buio poi 12 s di luce forte, in loop, 32×32 grigio, abbastanza per coprire i 10 s richiesti). Un controllo verifica che il completamento richieda davvero almeno ~9-10 s dall'avvio (non istantaneo). Il "permesso negato" si testa invece iniettando un `getUserMedia` che rifiuta con `ctx.addInitScript` in un contesto separato: verifica il messaggio d'errore e "Riprova".
 - Orologio finto: wb_now legge 'wb.fake_now'.
 
 ## Poi

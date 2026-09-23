@@ -126,18 +126,21 @@ async function setupCouple() {
 }
 
 // Fotocamera finta per i giochi che la usano (v14): Chromium sostituisce la
-// vera fotocamera con un video di test (buio 2 s poi luce 2 s, in loop),
-// permesso concesso in automatico. Non tocca i giochi senza fotocamera.
+// vera fotocamera con un video di test (buio 2 s poi luce forte 12 s, in
+// loop), permesso concesso in automatico. Solo start({camera:true}) la
+// attiva (usata da ui_test_14.js): questi flag rallentano/alterano i timer
+// interni di Chromium, quindi NON vanno passati ai test senza fotocamera
+// (visto rompere i tempi stretti di Riflessi quando attivi per tutti).
 const FAKE_CAM_ARGS = [
   '--use-fake-device-for-media-stream',
   '--use-fake-ui-for-media-stream',
   '--use-file-for-fake-video-capture=' + path.join(__dirname, 'fixtures', 'luce.y4m'),
 ];
 
-async function start() {
+async function start(opts) {
   await db.connect();
   await new Promise((r) => server.listen(8765, r));
-  return chromium.launch({ args: FAKE_CAM_ARGS });
+  return chromium.launch(opts && opts.camera ? { args: FAKE_CAM_ARGS } : undefined);
 }
 async function finish(browser, label) {
   await browser.close();

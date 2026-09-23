@@ -1,5 +1,5 @@
 'use strict';
-// Wake Battle — giochi (v14). Usato sia dall'app (sfida vera) sia da beta.html (prova).
+// Wake Battle — giochi (v15). Usato sia dall'app (sfida vera) sia da beta.html (prova).
 // Ogni gioco riceve i parametri generati dal server e, a fine partita, chiama
 // onDone(risposta): la risposta viene poi controllata dal server.
 // API: WBGames.has(codice) · WBGames.mount(codice, contenitore, parametri, { onDone })
@@ -767,16 +767,18 @@
   }
 
   // ---------------------------------------------------------------------
-  // ACCENDI LA LUCE (v14): usa cameraGame() sopra per tutta la parte
+  // ACCENDI LA LUCE (v15): usa cameraGame() sopra per tutta la parte
   // GENERICA (permesso, video nascosto, ciclo dei frame). SPECIFICO di
-  // questo gioco: grayAvg() e la soglia/frame-consecutivi qui sotto.
-  // "Accesa" = media dei toni di grigio del frame sopra LUCE_SOGLIA per
-  // almeno LUCE_FRAME_OK frame di fila (evita falsi positivi da un
-  // singolo flash). La barra mostra il livello in tempo reale.
+  // questo gioco: grayAvg() e la soglia/durata qui sotto.
+  // "Accesa" = media dei toni di grigio del frame sopra LUCE_SOGLIA
+  // mantenuta SENZA INTERRUZIONI per almeno LUCE_MS_MIN (tempo reale, non
+  // conteggio di frame: scende sotto soglia anche per un solo frame ->
+  // il conto riparte da zero). La barra mostra il livello in tempo reale
+  // e, mentre si è sopra soglia, il countdown dei secondi che mancano.
   // Nessun dato del sensore va al server: risposta { fatto: true }.
   // ---------------------------------------------------------------------
-  const LUCE_SOGLIA = 120;      // media grigio 0-255 sopra cui è "accesa"
-  const LUCE_FRAME_OK = 5;      // frame consecutivi sopra soglia per confermare
+  const LUCE_SOGLIA = 200;      // media grigio 0-255 sopra cui è "accesa" (molto luminoso)
+  const LUCE_MS_MIN = 10000;    // millisecondi consecutivi sopra soglia per confermare
 
   function grayAvg(frame) {
     const d = frame.data;
@@ -786,14 +788,22 @@
   }
 
   function luce(box, params, opts) {
-    let streak = 0;
+    let aboveSince = null;   // istante (ms) da cui si è ininterrottamente sopra soglia
     return cameraGame(box, {
-      hint: 'Punta la fotocamera verso una lampada spenta, poi accendila: appena rileva la luce si passa da soli.',
+      hint: 'Punta la fotocamera verso una lampada spenta, poi accendila e tieni la luce inquadrata: quando resta abbastanza forte per 10 secondi di fila si passa da soli.',
       onFrame(frame, ctrl) {
         const avg = grayAvg(frame);
-        streak = avg > LUCE_SOGLIA ? streak + 1 : 0;
-        ctrl.setLevel(Math.round((avg / 255) * 100), 'Luce rilevata: ' + Math.round((avg / 255) * 100) + '%');
-        if (streak >= LUCE_FRAME_OK) ctrl.finish({ fatto: true });
+        const pct = Math.round((avg / 255) * 100);
+        if (avg > LUCE_SOGLIA) {
+          const now = Date.now();
+          if (aboveSince == null) aboveSince = now;
+          const left = Math.max(0, Math.ceil((LUCE_MS_MIN - (now - aboveSince)) / 1000));
+          ctrl.setLevel(pct, left > 0 ? 'Luce rilevata: tieni ferma per altri ' + left + ' s' : 'Luce rilevata: fatto!');
+          if (now - aboveSince >= LUCE_MS_MIN) ctrl.finish({ fatto: true });
+        } else {
+          aboveSince = null;
+          ctrl.setLevel(pct, 'Luce rilevata: ' + pct + '%');
+        }
       },
     }, opts.onDone);
   }
