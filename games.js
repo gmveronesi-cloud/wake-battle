@@ -1,5 +1,5 @@
 'use strict';
-// Wake Battle — giochi (v20). Usato sia dall'app (sfida vera) sia da beta.html (prova).
+// Wake Battle — giochi (v21). Usato sia dall'app (sfida vera) sia da beta.html (prova).
 // Ogni gioco riceve i parametri generati dal server e, a fine partita, chiama
 // onDone(risposta): la risposta viene poi controllata dal server.
 // API: WBGames.has(codice) · WBGames.mount(codice, contenitore, parametri, { onDone })
@@ -63,7 +63,20 @@
   //           opts.onTap(video, ctrl) ad ogni tocco; opts.onReady(video,
   //           ctrl), se presente, parte una volta sola a fotocamera pronta
   //           (utile per il testo iniziale, es. il primo oggetto da
-  //           cercare) }
+  //           cercare)
+  //         record (default false: niente registrazione; true per i
+  //           giochi che registrano un video invece di analizzare i frame
+  //           — es. Occhi aperti): niente cameraLoop/manual, la
+  //           registrazione parte da sola a fotocamera pronta e dura
+  //           opts.recordMs, poi ctrl.finish({fatto:true, video: dataURL})
+  //           automatico; se l'app perde il focus (cambio scheda, schermo
+  //           spento) durante la registrazione, questa si scarta e
+  //           riparte da zero in automatico appena la fotocamera è di
+  //           nuovo attiva
+  //         facingMode (default 'environment': posteriore; 'user' per i
+  //           giochi che inquadrano la persona, es. Occhi aperti)
+  //         videoConstraints (vincoli aggiuntivi per getUserMedia, es.
+  //           risoluzione, uniti a facingMode) }
   function cameraGame(box, opts, onDone) {
     let stream = null;
     let stopLoop = null;
@@ -103,7 +116,9 @@
         return;
       }
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: Object.assign({ facingMode: opts.facingMode || 'environment' }, opts.videoConstraints || {}),
+        });
       } catch (e) {
         errorUI('Fotocamera non disponibile o permesso negato.');
         return;
@@ -142,7 +157,9 @@
           onDone(answer);
         },
       };
-      if (opts.manual) {
+      if (opts.record) {
+        stopLoop = recordVideo(stream, opts.recordMs, ctrl);
+      } else if (opts.manual) {
         const tapBtn = el('button', opts.buttonLabel || 'Fatto', 'game-start');
         tapBtn.type = 'button';
         tapBtn.addEventListener('click', () => opts.onTap(video, ctrl));
@@ -158,6 +175,82 @@
       destroy() { dead = true; stopStream(); box.replaceChildren(); delete box.dataset.phase; },
       // il server ha rifiutato la risposta: si richiede di nuovo (nessun dato da rigenerare)
       retry() { if (!dead) { stopStream(); start(); } },
+    };
+  }
+
+  // registra il flusso video per durationMs e poi chiama da sola
+  // ctrl.finish({fatto:true, video: dataURL}) (usata da "Occhi aperti").
+  // Bitrate basso apposta (video a bassa risoluzione, richiesto da
+  // cameraGame con opts.videoConstraints): punta a ~1,5 MB per 10 secondi,
+  // ben sotto il limite di 3.000.000 byte controllato da save_eye_video.
+  // Se il documento perde il focus mentre si registra (cambio scheda,
+  // schermo spento) la registrazione in corso si scarta e riparte da zero
+  // in automatico, senza richiedere un nuovo tocco su "Inizia": il flusso
+  // della fotocamera resta lo stesso, solo la registrazione ricomincia.
+  // Ritorna una funzione di pulizia (usata come stopLoop da cameraGame).
+  const RECORD_BITRATE = 1000000;
+
+  function pickVideoMime() {
+    const cands = ['video/webm;codecs=vp8', 'video/webm', 'video/mp4'];
+    for (const m of cands) {
+      if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) return m;
+    }
+    return '';
+  }
+
+  function recordVideo(stream, durationMs, ctrl) {
+    let recorder = null;
+    let chunks = [];
+    let restart = false;   // registrazione scartata per perdita di focus: va ripetuta
+    let closing = false;   // cameraGame sta chiudendo (finish/destroy): non ripartire
+    let tickTimer = null;
+    let stopTimer = null;
+
+    function onVisibility() {
+      if (document.hidden && recorder && recorder.state === 'recording') {
+        restart = true;
+        recorder.stop();
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility);
+
+    function begin() {
+      chunks = [];
+      restart = false;
+      const mime = pickVideoMime();
+      try {
+        recorder = mime ? new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: RECORD_BITRATE })
+                         : new MediaRecorder(stream, { videoBitsPerSecond: RECORD_BITRATE });
+      } catch (e) {
+        recorder = new MediaRecorder(stream);
+      }
+      recorder.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+      recorder.onstop = () => {
+        if (closing) return;
+        if (restart) { begin(); return; }
+        const blob = new Blob(chunks, { type: recorder.mimeType || 'video/webm' });
+        const reader = new FileReader();
+        reader.onload = () => ctrl.finish({ fatto: true, video: reader.result });
+        reader.readAsDataURL(blob);
+      };
+      recorder.start();
+      let left = Math.ceil(durationMs / 1000);
+      ctrl.setLevel(null, 'Registrazione: ' + left + ' s');
+      tickTimer = setInterval(() => {
+        left--;
+        if (left > 0) ctrl.setLevel(null, 'Registrazione: ' + left + ' s');
+      }, 1000);
+      stopTimer = setTimeout(() => { if (recorder.state === 'recording') recorder.stop(); }, durationMs);
+    }
+
+    begin();
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      clearTimeout(stopTimer);
+      clearInterval(tickTimer);
+      closing = true;
+      if (recorder && recorder.state === 'recording') { try { recorder.stop(); } catch (e) {} }
     };
   }
 
@@ -1068,7 +1161,38 @@
     }, opts.onDone);
   }
 
-  const GAMES = { memoria, numeri, colore_parola: coloreParola, riflessi, anagramma, luce, qr, caccia_colori: cacciaColori, oggetto: trovaOggetto };
+  // ---------------------------------------------------------------------
+  // OCCHI APERTI (v21): quinto gioco con fotocamera, ma FRONTALE (le altre
+  // usano sempre la posteriore) e in modalità record:true — niente analisi
+  // dei frame: si registra un video di 10 secondi (opts.videoConstraints
+  // tiene la risoluzione bassa per il peso del file) tenendo gli occhi
+  // aperti, poi la registrazione si ferma da sola e il gioco finisce in
+  // automatico (nessun pulsante "ho sbattuto le palpebre", nessuna
+  // conferma dopo la registrazione). Il video resta visibile a schermo
+  // intero tramite i controlli nativi del tag <video> (icona di
+  // ingrandimento), sia a chi l'ha girato sia al partner (stessa regola
+  // di visibilità del tempo, DECISIONI.md #11): app.js lo stacca dalla
+  // risposta (supererebbe il limite di byte di complete_game) e lo salva
+  // a parte con save_eye_video() (sql/18), mai in beta. Il server non
+  // verifica il contenuto del video (non può controllare se gli occhi
+  // sono rimasti davvero aperti): risposta {fatto:true, video: dataURL}.
+  // ---------------------------------------------------------------------
+  function occhiAperti(box, params, opts) {
+    return cameraGame(box, {
+      facingMode: 'user',
+      showVideo: true,
+      showBar: false,
+      record: true,
+      recordMs: (Number(params.secondi) || 10) * 1000,
+      videoConstraints: { width: { ideal: 320 }, height: { ideal: 240 } },
+      hint: 'Fotocamera frontale: tocca "Inizia" e tieni gli occhi aperti per 10 secondi. La registrazione si ferma da sola e il video resta visibile a te e al partner fino al giorno dopo. Se esci dall\'app durante la registrazione, riparte da zero in automatico.',
+    }, opts.onDone);
+  }
+
+  const GAMES = {
+    memoria, numeri, colore_parola: coloreParola, riflessi, anagramma, luce, qr,
+    caccia_colori: cacciaColori, oggetto: trovaOggetto, occhi: occhiAperti,
+  };
 
   window.WBGames = {
     has: (code) => Object.prototype.hasOwnProperty.call(GAMES, code),

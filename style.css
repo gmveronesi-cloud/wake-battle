@@ -189,3 +189,9 @@ button.game-start { font-size: 22px; padding: 20px; background: var(--ok); color
 .foto-lightbox { position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, .92);
   display: flex; align-items: center; justify-content: center; padding: 20px; }
 .foto-lightbox img { max-width: 100%; max-height: 100%; border-radius: 12px; }
+
+/* Video di "Occhi aperti" (v21): proprio e del partner, stesso stile in app
+   e beta. Nessuna lightbox dedicata: "schermo intero" con i controlli
+   nativi del <video> (icona di ingrandimento). */
+.video-box { margin: 10px 0 0; text-align: center; }
+.video-box video { width: 100%; max-width: 280px; border-radius: 12px; background: #000; }

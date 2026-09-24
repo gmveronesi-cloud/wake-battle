@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://rxxqdseojllcniowrzxm.supabase.co wss://rxxqdseojllcniowrzxm.supabase.co; base-uri 'none'; form-action 'none'; object-src 'none'">
+        content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' data:; connect-src 'self' https://rxxqdseojllcniowrzxm.supabase.co wss://rxxqdseojllcniowrzxm.supabase.co; base-uri 'none'; form-action 'none'; object-src 'none'">
   <meta name="referrer" content="no-referrer">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#0f1115">
   <title>Wake Battle</title>
-  <link rel="stylesheet" href="style.css?v=19">
+  <link rel="stylesheet" href="style.css?v=20">
 </head>
 <body>
   <main id="app">
@@ -128,6 +128,7 @@
             <p id="o-result-main" class="result"></p>
             <p id="o-result-ch" class="small center"></p>
             <div id="o-foto" class="foto-grid" hidden></div>
+            <div id="o-video" class="video-box" hidden></div>
           </div>
         </div>
 
@@ -136,6 +137,7 @@
           <p id="o-p-alarm" class="clock small-clock"></p>
           <p id="o-p-status" class="hint"></p>
           <div id="o-p-foto" class="foto-grid" hidden></div>
+          <div id="o-p-video" class="video-box" hidden></div>
         </div>
 
         <p id="o-day" class="banner" hidden></p>
@@ -227,7 +229,7 @@
   <script src="vendor/supabase.js"></script>
   <script src="vendor/zxing.js"></script>
   <script src="config.js"></script>
-  <script src="games.js?v=20"></script>
-  <script src="app.js?v=21"></script>
+  <script src="games.js?v=21"></script>
+  <script src="app.js?v=22"></script>
 </body>
 </html>

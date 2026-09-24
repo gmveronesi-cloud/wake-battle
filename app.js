@@ -1,5 +1,5 @@
 'use strict';
-// Wake Battle v21 — Passo 1 (accesso + coppia) + Passo 2 (sveglie, punteggi) + Passo 3 (giochi veri: Memoria, Numeri in ordine, Colore della parola, Riflessi, Anagramma, Accendi la luce, QR o codice a barre, Caccia ai colori, Trova l'oggetto).
+// Wake Battle v22 — Passo 1 (accesso + coppia) + Passo 2 (sveglie, punteggi) + Passo 3 (giochi veri: Memoria, Numeri in ordine, Colore della parola, Riflessi, Anagramma, Accendi la luce, QR o codice a barre, Caccia ai colori, Trova l'oggetto, Occhi aperti).
 // Regola di sicurezza: i testi degli utenti vanno SEMPRE in textContent, mai in innerHTML.
 // Tempi e punti li decide il server: l'app mostra solo quello che il server risponde.
 
@@ -388,6 +388,23 @@
     });
   }
 
+  // "Occhi aperti": il video (10s, fotocamera frontale) registrato durante
+  // la partita, proprio o del partner (get_today lo manda già filtrato per
+  // visibilità/24 ore, come 'foto'). A differenza delle foto, "schermo
+  // intero" si ottiene con i controlli nativi del <video> (icona di
+  // ingrandimento): nessuna lightbox dedicata.
+  function renderVideo(id, src) {
+    const box = $(id);
+    box.replaceChildren();
+    box.hidden = !src;
+    if (!src) return;
+    const video = document.createElement('video');
+    video.src = src;
+    video.controls = true;
+    video.playsInline = true;
+    box.appendChild(video);
+  }
+
   function renderToday() {
     const t = today;
     const io = t.io, pa = t.partner;
@@ -438,6 +455,7 @@
     }
     $('o-result-ch').textContent = io.challenge ? 'Challenge: ' + io.challenge.nome : '';
     renderFoto('o-foto', io.foto);
+    renderVideo('o-video', io.video);
 
     // partner
     $('o-p-label').textContent = pa.nome || partnerName;
@@ -449,6 +467,7 @@
       scaduto: 'Tempo scaduto',
     }[pa.stato] || '';
     renderFoto('o-p-foto', pa.foto);
+    renderVideo('o-p-video', pa.video);
 
     // esito della giornata
     const b = $('o-day');
@@ -511,20 +530,29 @@
   $('b-done').addEventListener('click', (ev) => busy(ev.currentTarget, () => sendDone('complete_challenge')));
 
   // "Trova l'oggetto" aggiunge alla risposta un array "foto" (le miniature
-  // scattate ad ogni tocco): va staccato dalla risposta del gioco vero e
-  // proprio (supererebbe il limite di byte di complete_game) e salvato a
-  // parte con save_object_photos(), solo se il "Fatto" è stato registrato.
+  // scattate ad ogni tocco), "Occhi aperti" una stringa "video" (il video
+  // registrato): vanno staccati dalla risposta del gioco vero e proprio
+  // (supererebbero il limite di byte di complete_game) e salvati a parte
+  // con save_object_photos()/save_eye_video(), solo se il "Fatto" è stato
+  // registrato.
   async function finishGame(answer) {
     let foto = null;
+    let video = null;
     if (answer && Array.isArray(answer.foto)) {
       foto = answer.foto;
       answer = Object.assign({}, answer);
       delete answer.foto;
     }
+    if (answer && typeof answer.video === 'string') {
+      video = answer.video;
+      answer = Object.assign({}, answer);
+      delete answer.video;
+    }
     const ok = await sendDone('complete_game', { p_answer: answer });
-    if (ok && foto) {
-      await call('save_object_photos', { p_foto: foto });
-      await loadToday();   // rifà il giro: la prima loadToday() (dentro sendDone) non aveva ancora le foto
+    if (ok && (foto || video)) {
+      if (foto) await call('save_object_photos', { p_foto: foto });
+      if (video) await call('save_eye_video', { p_video: video });
+      await loadToday();   // rifà il giro: la prima loadToday() (dentro sendDone) non aveva ancora foto/video
     }
     return ok;
   }

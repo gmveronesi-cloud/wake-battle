@@ -1,5 +1,5 @@
 'use strict';
-// Wake Battle — pagina di prova dei giochi (v10). Non salva tempi né punti.
+// Wake Battle — pagina di prova dei giochi (v11). Non salva tempi né punti.
 
 (function () {
   const cfg = window.WB_CONFIG;
@@ -101,14 +101,21 @@
     clearInterval(tickTimer); tickTimer = null;
     const secs = (Date.now() - t0) / 1000;
     $('b-timer').textContent = dur(secs);
-    // "Trova l'oggetto": le miniature non passano da beta_check (supererebbero
-    // il limite di byte della risposta) e non si salvano nella prova (come
-    // tutto il resto qui): si mostrano solo per un attimo, in pagina.
+    // "Trova l'oggetto"/"Occhi aperti": le miniature/il video non passano da
+    // beta_check (supererebbero il limite di byte della risposta) e non si
+    // salvano nella prova (come tutto il resto qui): si mostrano solo per
+    // un attimo, in pagina.
     let foto = null;
+    let video = null;
     if (answer && Array.isArray(answer.foto)) {
       foto = answer.foto;
       answer = Object.assign({}, answer);
       delete answer.foto;
+    }
+    if (answer && typeof answer.video === 'string') {
+      video = answer.video;
+      answer = Object.assign({}, answer);
+      delete answer.video;
     }
     const r = await call('beta_check', { p_code: current.codice, p_params: current.parametri, p_answer: answer });
     if (!r) return;
@@ -124,6 +131,16 @@
       img.addEventListener('click', () => openLightbox(src));
       fotoBox.appendChild(img);
     });
+    const videoBox = $('b-video');
+    videoBox.replaceChildren();
+    videoBox.hidden = !video;
+    if (video) {
+      const v = document.createElement('video');
+      v.src = video;
+      v.controls = true;
+      v.playsInline = true;
+      videoBox.appendChild(v);
+    }
     if (r.corretto) {
       $('b-result-main').textContent = 'Completato in ' + dur(secs);
       $('b-result-main').className = 'result win';

@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://rxxqdseojllcniowrzxm.supabase.co wss://rxxqdseojllcniowrzxm.supabase.co; base-uri 'none'; form-action 'none'; object-src 'none'">
+        content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' data:; connect-src 'self' https://rxxqdseojllcniowrzxm.supabase.co wss://rxxqdseojllcniowrzxm.supabase.co; base-uri 'none'; form-action 'none'; object-src 'none'">
   <meta name="referrer" content="no-referrer">
   <meta name="theme-color" content="#0f1115">
   <title>Wake Battle — Prova giochi</title>
-  <link rel="stylesheet" href="style.css?v=19">
+  <link rel="stylesheet" href="style.css?v=20">
 </head>
 <body>
   <main id="app">
@@ -38,6 +38,7 @@
         <p id="b-result-main" class="result"></p>
         <p id="b-result-sub" class="small center"></p>
         <div id="b-foto" class="foto-grid" hidden></div>
+        <div id="b-video" class="video-box" hidden></div>
         <button id="b-again" type="button">Rigioca</button>
       </div>
       <button id="b-back" class="link" type="button">← Elenco giochi</button>
@@ -55,7 +56,7 @@
   <script src="vendor/supabase.js"></script>
   <script src="vendor/zxing.js"></script>
   <script src="config.js"></script>
-  <script src="games.js?v=20"></script>
-  <script src="beta.js?v=20"></script>
+  <script src="games.js?v=21"></script>
+  <script src="beta.js?v=21"></script>
 </body>
 </html>
