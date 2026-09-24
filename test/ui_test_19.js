@@ -46,6 +46,9 @@ async function hideDoc(page, hidden) {
   await page.waitForSelector('#b-game[data-phase="gioca"] video', { timeout: 15000 });
   check('beta: video in diretta (anteprima mentre ci si allena)', await page.locator('#b-game video').isVisible());
   check('beta: niente barra (solo il testo dei secondi)', (await page.locator('#b-game .cam-bar').count()) === 0);
+  const titolo = EXERCISE_NAMES[esercizio];
+  const titoloAtteso = titolo.charAt(0).toUpperCase() + titolo.slice(1);
+  check('beta: titolo con il nome dell\'esercizio da svolgere', await txt(page, '#b-game .game-title'), titoloAtteso);
   await page.waitForSelector('#b-game .game-note:has-text("Registrazione: 0 s")', { timeout: 5000 });
   check('beta: pulsante "Fine registrazione" presente (fermata manuale, non un countdown)', await visible(page, '#b-game button:has-text("Fine registrazione")'));
   await shot(page, '106_esercizi_beta_gioca');
@@ -103,8 +106,11 @@ async function hideDoc(page, hidden) {
   await page.waitForTimeout(500);
   check('lun: challenge Esercizi', (await txt(page, '#o-ch-name')) === 'Esercizi');
   check('lun: niente Fatto', !(await visible(page, '#b-done')));
+  const esercizioVero = log.filter((x) => x.fn === 'get_today').pop().r.io.challenge.parametri.esercizio;
+  const titoloVero = EXERCISE_NAMES[esercizioVero].replace(/^./, (c) => c.toUpperCase());
   await page.click('#o-game .game-start');
   await page.waitForSelector('#o-game[data-phase="gioca"] video', { timeout: 15000 });
+  check('lun: titolo con il nome dell\'esercizio anche nella sfida vera', await txt(page, '#o-game .game-title'), titoloVero);
   await shot(page, '108_esercizi_oggi_gioca');
   await page.waitForTimeout(1500);
   await page.click('#o-game button:has-text("Fine registrazione")');

@@ -1,5 +1,5 @@
 'use strict';
-// Wake Battle — giochi (v22). Usato sia dall'app (sfida vera) sia da beta.html (prova).
+// Wake Battle — giochi (v23). Usato sia dall'app (sfida vera) sia da beta.html (prova).
 // Ogni gioco riceve i parametri generati dal server e, a fine partita, chiama
 // onDone(risposta): la risposta viene poi controllata dal server.
 // API: WBGames.has(codice) · WBGames.mount(codice, contenitore, parametri, { onDone })
@@ -83,7 +83,10 @@
   //         facingMode (default 'environment': posteriore; 'user' per i
   //           giochi che inquadrano la persona, es. Occhi aperti)
   //         videoConstraints (vincoli aggiuntivi per getUserMedia, es.
-  //           risoluzione, uniti a facingMode) }
+  //           risoluzione, uniti a facingMode)
+  //         title (assente di default: se presente, mostrato come titolo
+  //           in cima alla schermata di svolgimento, sopra il testo dei
+  //           secondi — es. Esercizi, il nome dell'esercizio da fare) }
   function cameraGame(box, opts, onDone) {
     let stream = null;
     let stopLoop = null;
@@ -141,6 +144,7 @@
       if (dead) { stopStream(); return; }
       box.replaceChildren();
       box.dataset.phase = 'gioca';
+      if (opts.title) box.appendChild(el('p', opts.title, 'game-title'));
       const note = el('p', '', 'game-note');
       box.appendChild(note);
       let fill = null;
@@ -1246,6 +1250,7 @@
 
   function esercizi(box, params, opts) {
     const nome = EXERCISE_NAMES[params.esercizio] || params.esercizio;
+    const titolo = nome.charAt(0).toUpperCase() + nome.slice(1);
     return cameraGame(box, {
       facingMode: 'user',
       showVideo: true,
@@ -1253,6 +1258,7 @@
       record: true,
       recordMs: (Number(params.secondi_max) || 180) * 1000,
       stopLabel: 'Fine registrazione',
+      title: titolo,
       videoConstraints: { width: { ideal: 320 }, height: { ideal: 240 } },
       hint: 'Fotocamera frontale: tocca "Inizia", esegui ' + nome + ' inquadrato, poi tocca "Fine registrazione" per finire (il tempo si ferma lì). Il video resta visibile a te e al partner per 48 ore. Se esci dall\'app durante la registrazione, riparte da zero in automatico.',
     }, opts.onDone);
