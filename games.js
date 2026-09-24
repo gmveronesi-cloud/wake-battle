@@ -1,5 +1,5 @@
 'use strict';
-// Wake Battle — giochi (v21). Usato sia dall'app (sfida vera) sia da beta.html (prova).
+// Wake Battle — giochi (v22). Usato sia dall'app (sfida vera) sia da beta.html (prova).
 // Ogni gioco riceve i parametri generati dal server e, a fine partita, chiama
 // onDone(risposta): la risposta viene poi controllata dal server.
 // API: WBGames.has(codice) · WBGames.mount(codice, contenitore, parametri, { onDone })
@@ -67,12 +67,19 @@
   //         record (default false: niente registrazione; true per i
   //           giochi che registrano un video invece di analizzare i frame
   //           — es. Occhi aperti): niente cameraLoop/manual, la
-  //           registrazione parte da sola a fotocamera pronta e dura
+  //           registrazione parte da sola a fotocamera pronta e dura al più
   //           opts.recordMs, poi ctrl.finish({fatto:true, video: dataURL})
   //           automatico; se l'app perde il focus (cambio scheda, schermo
   //           spento) durante la registrazione, questa si scarta e
   //           riparte da zero in automatico appena la fotocamera è di
   //           nuovo attiva
+  //         stopLabel (assente di default: opts.recordMs è una durata
+  //           fissa, come Occhi aperti; se presente, es. "Fine
+  //           registrazione", mostra un pulsante che ferma la registrazione
+  //           quando la persona lo tocca — opts.recordMs resta una rete di
+  //           sicurezza, la durata massima oltre la quale si ferma comunque
+  //           da sola — e il testo mostra i secondi trascorsi invece del
+  //           countdown, es. Esercizi)
   //         facingMode (default 'environment': posteriore; 'user' per i
   //           giochi che inquadrano la persona, es. Occhi aperti)
   //         videoConstraints (vincoli aggiuntivi per getUserMedia, es.
@@ -158,7 +165,13 @@
         },
       };
       if (opts.record) {
-        stopLoop = recordVideo(stream, opts.recordMs, ctrl);
+        stopLoop = recordVideo(stream, opts.recordMs, ctrl, !!opts.stopLabel);
+        if (opts.stopLabel) {
+          const stopBtn = el('button', opts.stopLabel, 'game-start');
+          stopBtn.type = 'button';
+          stopBtn.addEventListener('click', () => ctrl.stopRecording());
+          box.appendChild(stopBtn);
+        }
       } else if (opts.manual) {
         const tapBtn = el('button', opts.buttonLabel || 'Fatto', 'game-start');
         tapBtn.type = 'button';
@@ -178,15 +191,22 @@
     };
   }
 
-  // registra il flusso video per durationMs e poi chiama da sola
-  // ctrl.finish({fatto:true, video: dataURL}) (usata da "Occhi aperti").
-  // Bitrate basso apposta (video a bassa risoluzione, richiesto da
-  // cameraGame con opts.videoConstraints): punta a ~1,5 MB per 10 secondi,
-  // ben sotto il limite di 3.000.000 byte controllato da save_eye_video.
-  // Se il documento perde il focus mentre si registra (cambio scheda,
-  // schermo spento) la registrazione in corso si scarta e riparte da zero
-  // in automatico, senza richiedere un nuovo tocco su "Inizia": il flusso
-  // della fotocamera resta lo stesso, solo la registrazione ricomincia.
+  // registra il flusso video per durationMs (o finché non si tocca
+  // ctrl.stopRecording(), se cameraGame ha mostrato il pulsante di
+  // opts.stopLabel — vedi Esercizi) e poi chiama da sola
+  // ctrl.finish({fatto:true, video: dataURL}) (usata anche da "Occhi
+  // aperti", senza fermata manuale). Bitrate basso apposta (video a bassa
+  // risoluzione, richiesto da cameraGame con opts.videoConstraints): punta
+  // a ~1 Mbps, ben sotto i limiti controllati da save_eye_video/
+  // save_exercise_video. Se il documento perde il focus mentre si registra
+  // (cambio scheda, schermo spento) la registrazione in corso si scarta e
+  // riparte da zero in automatico, senza richiedere un nuovo tocco su
+  // "Inizia": il flusso della fotocamera resta lo stesso, solo la
+  // registrazione ricomincia (anche con fermata manuale: il pulsante resta
+  // lo stesso, tocca aspettare che riparta). manualStop true (Esercizi):
+  // il testo mostra i secondi TRASCORSI (non il countdown) e durationMs è
+  // solo una rete di sicurezza (si ferma comunque da sola oltre quel
+  // limite, come se fosse stato toccato il pulsante).
   // Ritorna una funzione di pulizia (usata come stopLoop da cameraGame).
   const RECORD_BITRATE = 1000000;
 
@@ -198,7 +218,7 @@
     return '';
   }
 
-  function recordVideo(stream, durationMs, ctrl) {
+  function recordVideo(stream, durationMs, ctrl, manualStop) {
     let recorder = null;
     let chunks = [];
     let restart = false;   // registrazione scartata per perdita di focus: va ripetuta
@@ -213,6 +233,10 @@
       }
     }
     document.addEventListener('visibilitychange', onVisibility);
+
+    ctrl.stopRecording = () => {
+      if (recorder && recorder.state === 'recording') recorder.stop();
+    };
 
     function begin() {
       chunks = [];
@@ -234,12 +258,21 @@
         reader.readAsDataURL(blob);
       };
       recorder.start();
-      let left = Math.ceil(durationMs / 1000);
-      ctrl.setLevel(null, 'Registrazione: ' + left + ' s');
-      tickTimer = setInterval(() => {
-        left--;
-        if (left > 0) ctrl.setLevel(null, 'Registrazione: ' + left + ' s');
-      }, 1000);
+      if (manualStop) {
+        let elapsed = 0;
+        ctrl.setLevel(null, 'Registrazione: 0 s');
+        tickTimer = setInterval(() => {
+          elapsed++;
+          ctrl.setLevel(null, 'Registrazione: ' + elapsed + ' s');
+        }, 1000);
+      } else {
+        let left = Math.ceil(durationMs / 1000);
+        ctrl.setLevel(null, 'Registrazione: ' + left + ' s');
+        tickTimer = setInterval(() => {
+          left--;
+          if (left > 0) ctrl.setLevel(null, 'Registrazione: ' + left + ' s');
+        }, 1000);
+      }
       stopTimer = setTimeout(() => { if (recorder.state === 'recording') recorder.stop(); }, durationMs);
     }
 
@@ -1189,9 +1222,45 @@
     }, opts.onDone);
   }
 
+  // ---------------------------------------------------------------------
+  // ESERCIZI (v22): sesto (e ultimo) gioco con fotocamera, FRONTALE come
+  // Occhi aperti, stesso record:true — ma A DIFFERENZA di Occhi aperti la
+  // registrazione NON si ferma da sola dopo un tempo fisso: opts.stopLabel
+  // mostra un pulsante "Fine registrazione" che la persona tocca quando ha
+  // finito l'esercizio (il tempo si è già fermato lì, DECISIONI.md), niente
+  // altra conferma. recordMs resta una rete di sicurezza (3 minuti): oltre
+  // quel limite si ferma comunque da sola. Se l'app perde il focus durante
+  // la registrazione si scarta e riparte da zero in automatico, come Occhi
+  // aperti (stesso meccanismo in recordVideo(), invariato). Il video resta
+  // visibile (proprio subito, partner a giornata chiusa, DECISIONI.md #11)
+  // per 48 ore, non solo "oggi": app.js lo stacca dalla risposta e lo salva
+  // a parte con save_exercise_video() (sql/19), mai in beta (dove si vede
+  // solo un attimo in pagina, riusando lo stesso riquadro generico di Occhi
+  // aperti). Il server non verifica se l'esercizio è stato fatto davvero
+  // (il partner non può contestarlo, DECISIONI.md): risposta
+  // {fatto:true, video: dataURL}.
+  // ---------------------------------------------------------------------
+  const EXERCISE_NAMES = {
+    piegamenti_10: '10 piegamenti', squat_20: '20 squat', affondi_20: '20 affondi', plank_30: 'plank per 30 secondi',
+  };
+
+  function esercizi(box, params, opts) {
+    const nome = EXERCISE_NAMES[params.esercizio] || params.esercizio;
+    return cameraGame(box, {
+      facingMode: 'user',
+      showVideo: true,
+      showBar: false,
+      record: true,
+      recordMs: (Number(params.secondi_max) || 180) * 1000,
+      stopLabel: 'Fine registrazione',
+      videoConstraints: { width: { ideal: 320 }, height: { ideal: 240 } },
+      hint: 'Fotocamera frontale: tocca "Inizia", esegui ' + nome + ' inquadrato, poi tocca "Fine registrazione" per finire (il tempo si ferma lì). Il video resta visibile a te e al partner per 48 ore. Se esci dall\'app durante la registrazione, riparte da zero in automatico.',
+    }, opts.onDone);
+  }
+
   const GAMES = {
     memoria, numeri, colore_parola: coloreParola, riflessi, anagramma, luce, qr,
-    caccia_colori: cacciaColori, oggetto: trovaOggetto, occhi: occhiAperti,
+    caccia_colori: cacciaColori, oggetto: trovaOggetto, occhi: occhiAperti, esercizi,
   };
 
   window.WBGames = {

@@ -1,5 +1,5 @@
 'use strict';
-// Wake Battle v22 — Passo 1 (accesso + coppia) + Passo 2 (sveglie, punteggi) + Passo 3 (giochi veri: Memoria, Numeri in ordine, Colore della parola, Riflessi, Anagramma, Accendi la luce, QR o codice a barre, Caccia ai colori, Trova l'oggetto, Occhi aperti).
+// Wake Battle v23 — Passo 1 (accesso + coppia) + Passo 2 (sveglie, punteggi) + Passo 3 (giochi veri: Memoria, Numeri in ordine, Colore della parola, Riflessi, Anagramma, Accendi la luce, QR o codice a barre, Caccia ai colori, Trova l'oggetto, Occhi aperti, Esercizi).
 // Regola di sicurezza: i testi degli utenti vanno SEMPRE in textContent, mai in innerHTML.
 // Tempi e punti li decide il server: l'app mostra solo quello che il server risponde.
 
@@ -388,11 +388,12 @@
     });
   }
 
-  // "Occhi aperti": il video (10s, fotocamera frontale) registrato durante
-  // la partita, proprio o del partner (get_today lo manda già filtrato per
-  // visibilità/24 ore, come 'foto'). A differenza delle foto, "schermo
-  // intero" si ottiene con i controlli nativi del <video> (icona di
-  // ingrandimento): nessuna lightbox dedicata.
+  // "Occhi aperti"/"Esercizi": il video registrato durante la partita,
+  // proprio o del partner (get_today lo manda già filtrato per visibilità:
+  // 24 ore su "oggi" per 'video', 48 ore piene per 'video_esercizi', come
+  // 'foto'). A differenza delle foto, "schermo intero" si ottiene con i
+  // controlli nativi del <video> (icona di ingrandimento): nessuna
+  // lightbox dedicata.
   function renderVideo(id, src) {
     const box = $(id);
     box.replaceChildren();
@@ -456,6 +457,7 @@
     $('o-result-ch').textContent = io.challenge ? 'Challenge: ' + io.challenge.nome : '';
     renderFoto('o-foto', io.foto);
     renderVideo('o-video', io.video);
+    renderVideo('o-video-esercizi', io.video_esercizi);
 
     // partner
     $('o-p-label').textContent = pa.nome || partnerName;
@@ -468,6 +470,7 @@
     }[pa.stato] || '';
     renderFoto('o-p-foto', pa.foto);
     renderVideo('o-p-video', pa.video);
+    renderVideo('o-p-video-esercizi', pa.video_esercizi);
 
     // esito della giornata
     const b = $('o-day');
@@ -530,28 +533,35 @@
   $('b-done').addEventListener('click', (ev) => busy(ev.currentTarget, () => sendDone('complete_challenge')));
 
   // "Trova l'oggetto" aggiunge alla risposta un array "foto" (le miniature
-  // scattate ad ogni tocco), "Occhi aperti" una stringa "video" (il video
-  // registrato): vanno staccati dalla risposta del gioco vero e proprio
-  // (supererebbero il limite di byte di complete_game) e salvati a parte
-  // con save_object_photos()/save_eye_video(), solo se il "Fatto" è stato
-  // registrato.
+  // scattate ad ogni tocco), "Occhi aperti"/"Esercizi" una stringa "video"
+  // (il video registrato): vanno staccati dalla risposta del gioco vero e
+  // proprio (supererebbero il limite di byte di complete_game) e salvati a
+  // parte, solo se il "Fatto" è stato registrato — con save_object_photos()
+  // per le foto, save_eye_video() per Occhi aperti, save_exercise_video()
+  // per Esercizi (stessa forma della risposta {fatto:true, video}, tabelle
+  // e regole di visibilità diverse: si distingue dal codice del gioco
+  // montato, ricavato da gameKey).
   async function finishGame(answer) {
+    const code = gameKey ? gameKey.split(':')[1] : null;
     let foto = null;
     let video = null;
+    let videoEsercizi = null;
     if (answer && Array.isArray(answer.foto)) {
       foto = answer.foto;
       answer = Object.assign({}, answer);
       delete answer.foto;
     }
     if (answer && typeof answer.video === 'string') {
-      video = answer.video;
       answer = Object.assign({}, answer);
+      if (code === 'esercizi') videoEsercizi = answer.video;
+      else video = answer.video;
       delete answer.video;
     }
     const ok = await sendDone('complete_game', { p_answer: answer });
-    if (ok && (foto || video)) {
+    if (ok && (foto || video || videoEsercizi)) {
       if (foto) await call('save_object_photos', { p_foto: foto });
       if (video) await call('save_eye_video', { p_video: video });
+      if (videoEsercizi) await call('save_exercise_video', { p_video: videoEsercizi });
       await loadToday();   // rifà il giro: la prima loadToday() (dentro sendDone) non aveva ancora foto/video
     }
     return ok;

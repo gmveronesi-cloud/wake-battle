@@ -130,6 +130,12 @@
             <div id="o-foto" class="foto-grid" hidden></div>
             <div id="o-video" class="video-box" hidden></div>
           </div>
+          <!-- "Esercizi": a differenza di 'o-video' (dentro o-result, sparisce
+               col cambio di giornata insieme allo stato "fatto" di oggi) resta
+               visibile fino a 48 ore dalla registrazione, anche il giorno dopo
+               mentre la sveglia di oggi è ancora "in corso": va fuori da
+               o-result, sempre valutato. -->
+          <div id="o-video-esercizi" class="video-box" hidden></div>
         </div>
 
         <div class="card">
@@ -138,6 +144,7 @@
           <p id="o-p-status" class="hint"></p>
           <div id="o-p-foto" class="foto-grid" hidden></div>
           <div id="o-p-video" class="video-box" hidden></div>
+          <div id="o-p-video-esercizi" class="video-box" hidden></div>
         </div>
 
         <p id="o-day" class="banner" hidden></p>
@@ -229,7 +236,7 @@
   <script src="vendor/supabase.js"></script>
   <script src="vendor/zxing.js"></script>
   <script src="config.js"></script>
-  <script src="games.js?v=21"></script>
-  <script src="app.js?v=22"></script>
+  <script src="games.js?v=22"></script>
+  <script src="app.js?v=23"></script>
 </body>
 </html>
