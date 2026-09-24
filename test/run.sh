@@ -142,7 +142,9 @@ if [ -f sql/17_oggetto.sql ]; then
   echo "--- test 14 (Accendi la luce) ancora valido dopo 17 ---"; reset_db; $L; python3 test/test_14.py
   echo "--- test 15 (QR o codice a barre) ancora valido dopo 17 ---"; reset_db; $L; python3 test/test_15.py
   echo "--- test 16 (Caccia ai colori) ancora valido dopo 17 ---"; reset_db; $L; python3 test/test_16.py
-  echo "--- test 17 (Trova l'oggetto) ---"; reset_db; $L; python3 test/test_17.py
+  # test_17.py è stato riscritto in questa sessione per il "video a richiesta"
+  # (sql/20): richiede get_object_photos, non esiste ancora qui. Prima
+  # verifica reale nel blocco 20 più sotto.
   echo "--- 17 rilanciato due volte: nessun errore ---"
   $P -d wb -f sql/17_oggetto.sql && echo ok
 fi
@@ -158,8 +160,8 @@ if [ -f sql/18_occhi_aperti.sql ]; then
   echo "--- test 14 (Accendi la luce) ancora valido dopo 18 ---"; reset_db; $L; python3 test/test_14.py
   echo "--- test 15 (QR o codice a barre) ancora valido dopo 18 ---"; reset_db; $L; python3 test/test_15.py
   echo "--- test 16 (Caccia ai colori) ancora valido dopo 18 ---"; reset_db; $L; python3 test/test_16.py
-  echo "--- test 17 (Trova l'oggetto) ancora valido dopo 18 ---"; reset_db; $L; python3 test/test_17.py
-  echo "--- test 18 (Occhi aperti) ---"; reset_db; $L; python3 test/test_18.py
+  # test_17.py/test_18.py: riscritti per il "video a richiesta" (sql/20),
+  # non ancora caricato qui. Prima verifica reale nel blocco 20.
   echo "--- 18 rilanciato due volte: nessun errore ---"
   $P -d wb -f sql/18_occhi_aperti.sql && echo ok
 fi
@@ -175,9 +177,49 @@ if [ -f sql/19_esercizi.sql ]; then
   echo "--- test 14 (Accendi la luce) ancora valido dopo 19 ---"; reset_db; $L; python3 test/test_14.py
   echo "--- test 15 (QR o codice a barre) ancora valido dopo 19 ---"; reset_db; $L; python3 test/test_15.py
   echo "--- test 16 (Caccia ai colori) ancora valido dopo 19 ---"; reset_db; $L; python3 test/test_16.py
-  echo "--- test 17 (Trova l'oggetto) ancora valido dopo 19 ---"; reset_db; $L; python3 test/test_17.py
-  echo "--- test 18 (Occhi aperti) ancora valido dopo 19 ---"; reset_db; $L; python3 test/test_18.py
-  echo "--- test 19 (Esercizi) ---"; reset_db; $L; python3 test/test_19.py
+  # test_17.py/test_18.py/test_19.py: riscritti per il "video a richiesta"
+  # (sql/20) e (test_19) per la scadenza a 24h invece di 48h: nessuno dei
+  # tre è ancora valido qui. Prima verifica reale nel blocco 20.
   echo "--- 19 rilanciato due volte: nessun errore ---"
   $P -d wb -f sql/19_esercizi.sql && echo ok
+fi
+if [ -f sql/20_video_a_richiesta.sql ]; then
+  L="$P -d wb -f sql/03_giochi.sql -f sql/04_memoria_round.sql -f sql/05_numeri.sql -f sql/06_colore_parola.sql -f sql/07_refactor_giochi.sql -f sql/08_intruso.sql -f sql/09_rimuovi_intruso.sql -f sql/10_riflessi.sql -f sql/11_riflessi_babbo.sql -f sql/12_anagramma.sql -f sql/13_anagramma_parole.sql -f sql/14_luce.sql -f sql/15_qr.sql -f sql/16_caccia_colori.sql -f sql/17_oggetto.sql -f sql/18_occhi_aperti.sql -f sql/19_esercizi.sql -f sql/20_video_a_richiesta.sql"
+  echo "--- 02 ancora valido dopo 20 ---";  reset_db; $L; python3 test/test_02.py
+  echo "--- 04 (Memoria) ancora valido dopo 20 ---"; reset_db; $L; python3 test/test_04.py
+  echo "--- 05 (Numeri) ancora valido dopo 20 ---"; reset_db; $L; python3 test/test_05.py
+  echo "--- 06 (Colore della parola) ancora valido dopo 20 ---"; reset_db; $L; python3 test/test_06.py
+  echo "--- 09 (rimozione intruso) ancora valido dopo 20 ---"; reset_db; $L; python3 test/test_09.py
+  echo "--- 11 (Riflessi Babbo/Schiacciami) ancora valido dopo 20 ---"; reset_db; $L; python3 test/test_11.py
+  echo "--- test 12 (Anagramma) ancora valido dopo 20 ---"; reset_db; $L; python3 test/test_12.py
+  echo "--- test 14 (Accendi la luce) ancora valido dopo 20 ---"; reset_db; $L; python3 test/test_14.py
+  echo "--- test 15 (QR o codice a barre) ancora valido dopo 20 ---"; reset_db; $L; python3 test/test_15.py
+  echo "--- test 16 (Caccia ai colori) ancora valido dopo 20 ---"; reset_db; $L; python3 test/test_16.py
+  echo "--- test 17 (Trova l'oggetto) col video a richiesta ---"; reset_db; $L; python3 test/test_17.py
+  echo "--- test 18 (Occhi aperti) col video a richiesta ---"; reset_db; $L; python3 test/test_18.py
+  echo "--- test 19 (Esercizi) col video a richiesta e 24h (non più 48h) ---"; reset_db; $L; python3 test/test_19.py
+  echo "--- test 20 (video/foto a richiesta) ---"; reset_db; $L; python3 test/test_20.py
+  echo "--- 20 rilanciato due volte: nessun errore ---"
+  $P -d wb -f sql/20_video_a_richiesta.sql && echo ok
+fi
+if [ -f sql/21_salta.sql ]; then
+  L="$P -d wb -f sql/03_giochi.sql -f sql/04_memoria_round.sql -f sql/05_numeri.sql -f sql/06_colore_parola.sql -f sql/07_refactor_giochi.sql -f sql/08_intruso.sql -f sql/09_rimuovi_intruso.sql -f sql/10_riflessi.sql -f sql/11_riflessi_babbo.sql -f sql/12_anagramma.sql -f sql/13_anagramma_parole.sql -f sql/14_luce.sql -f sql/15_qr.sql -f sql/16_caccia_colori.sql -f sql/17_oggetto.sql -f sql/18_occhi_aperti.sql -f sql/19_esercizi.sql -f sql/20_video_a_richiesta.sql -f sql/21_salta.sql"
+  echo "--- 02 ancora valido dopo 21 ---";  reset_db; $L; python3 test/test_02.py
+  echo "--- test 17 (Trova l'oggetto) ancora valido dopo 21 ---"; reset_db; $L; python3 test/test_17.py
+  echo "--- test 18 (Occhi aperti) ancora valido dopo 21 ---"; reset_db; $L; python3 test/test_18.py
+  echo "--- test 19 (Esercizi) ancora valido dopo 21 ---"; reset_db; $L; python3 test/test_19.py
+  echo "--- test 20 (video/foto a richiesta) ancora valido dopo 21 ---"; reset_db; $L; python3 test/test_20.py
+  echo "--- test 21 (Salta) ---"; reset_db; $L; python3 test/test_21.py
+  echo "--- 21 rilanciato due volte: nessun errore ---"
+  $P -d wb -f sql/21_salta.sql && echo ok
+fi
+if [ -f sql/22_bilanciamento.sql ]; then
+  L="$P -d wb -f sql/03_giochi.sql -f sql/04_memoria_round.sql -f sql/05_numeri.sql -f sql/06_colore_parola.sql -f sql/07_refactor_giochi.sql -f sql/08_intruso.sql -f sql/09_rimuovi_intruso.sql -f sql/10_riflessi.sql -f sql/11_riflessi_babbo.sql -f sql/12_anagramma.sql -f sql/13_anagramma_parole.sql -f sql/14_luce.sql -f sql/15_qr.sql -f sql/16_caccia_colori.sql -f sql/17_oggetto.sql -f sql/18_occhi_aperti.sql -f sql/19_esercizi.sql -f sql/20_video_a_richiesta.sql -f sql/21_salta.sql -f sql/22_bilanciamento.sql"
+  echo "--- 02 ancora valido dopo 22 ---";  reset_db; $L; python3 test/test_02.py
+  echo "--- test 19 (Esercizi) ancora valido dopo 22 ---"; reset_db; $L; python3 test/test_19.py
+  echo "--- test 20 (video/foto a richiesta) ancora valido dopo 22 ---"; reset_db; $L; python3 test/test_20.py
+  echo "--- test 21 (Salta) ancora valido dopo 22 ---"; reset_db; $L; python3 test/test_21.py
+  echo "--- test 22 (bilanciamento estrazione) ---"; reset_db; $L; python3 test/test_22.py
+  echo "--- 22 rilanciato due volte: nessun errore ---"
+  $P -d wb -f sql/22_bilanciamento.sql && echo ok
 fi

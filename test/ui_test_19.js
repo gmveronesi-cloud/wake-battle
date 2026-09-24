@@ -5,10 +5,10 @@
 // fisso: un pulsante "Fine registrazione" la ferma quando la persona lo
 // tocca (il testo mostra i secondi TRASCORSI, non un countdown), e il
 // gioco finisce subito, {fatto:true} (il video viaggia a parte,
-// save_exercise_video, mai in beta). Novità testata anche qui: il video
-// resta visibile per 48 ORE PIENE (non solo "oggi" come Occhi aperti), sia
-// a chi l'ha girato sia al partner (a giornata chiusa, DECISIONI.md #11,
-// ma quella del giorno in cui il video è stato girato).
+// save_exercise_video, mai in beta). Dal Passo 4 (video a richiesta) il
+// video si scarica solo al tocco di "Guarda video" (get_exercise_video) e
+// resta visibile solo per la giornata di gioco, esattamente come "Occhi
+// aperti" (non più 48 ore piene dalla registrazione).
 const { T, check, db, rpc, log, openApp, txt, visible, shot, reload, setupCouple, start, finish } = require('./ui_lib');
 
 const EXERCISE_NAMES = {
@@ -121,7 +121,10 @@ async function hideDoc(page, hidden) {
   check('lun: save_exercise_video chiamata con un video', sv && typeof sv.body.p_video === 'string' && sv.body.p_video.startsWith('data:video/'), sv);
   check('lun: save_exercise_video ok', sv && sv.r.ok === true);
   await page.waitForTimeout(300);
-  check('lun: video proprio mostrato in "Oggi"', (await page.locator('#o-video-esercizi video').count()) === 1);
+  check('lun: pulsante "Guarda video" (non ancora scaricato)', (await txt(page, '#o-video-esercizi button')) === 'Guarda video');
+  await page.click('#o-video-esercizi button');
+  await page.waitForSelector('#o-video-esercizi video');
+  check('lun: video proprio mostrato in "Oggi" dopo il tocco', (await page.locator('#o-video-esercizi video').count()) === 1);
   check('lun: controlli nativi (schermo intero via icona nativa)', await page.getAttribute('#o-video-esercizi video', 'controls') !== null);
   check('lun: video del partner non ancora mostrato (giornata non chiusa)', !(await visible(page, '#o-p-video-esercizi')));
   await shot(page, '109_esercizi_oggi_fatto');
@@ -138,28 +141,31 @@ async function hideDoc(page, hidden) {
   await pageB.click('#o-game button:has-text("Fine registrazione")');
   await pageB.waitForSelector('#o-result:not([hidden])', { timeout: 15000 });
   await pageB.waitForTimeout(300);
-  check('mar B: video proprio di B', (await pageB.locator('#o-video-esercizi video').count()) === 1);
-  check('mar B: giornata chiusa -> vede subito anche il video di A', (await pageB.locator('#o-p-video-esercizi video').count()) === 1);
+  await pageB.click('#o-video-esercizi button');
+  await pageB.waitForSelector('#o-video-esercizi video');
+  check('mar B: video proprio di B (dopo il tocco)', (await pageB.locator('#o-video-esercizi video').count()) === 1);
+  check('mar B: giornata chiusa -> pulsante del partner disponibile subito', (await txt(pageB, '#o-p-video-esercizi button')) === 'Guarda video');
+  await pageB.click('#o-p-video-esercizi button');
+  await pageB.waitForSelector('#o-p-video-esercizi video');
+  check('mar B: vede subito anche il video di A', (await pageB.locator('#o-p-video-esercizi video').count()) === 1);
   await shot(pageB, '110_esercizi_oggi_B_fatto');
 
   await reload(page);   // A ricarica: ora la giornata è chiusa anche per lui
+  await page.click('#o-p-video-esercizi button');
+  await page.waitForSelector('#o-p-video-esercizi video');
   check('lun A: ora vede anche il video di B', (await page.locator('#o-p-video-esercizi video').count()) === 1);
-  check('lun A: il proprio resta visibile', (await page.locator('#o-video-esercizi video').count()) === 1);
+  await page.click('#o-video-esercizi button');
+  await page.waitForSelector('#o-video-esercizi video');
+  check('lun A: il proprio resta visibile (dopo il tocco)', (await page.locator('#o-video-esercizi video').count()) === 1);
   await shot(page, '111_esercizi_oggi_entrambi_i_video');
 
-  // ===== 5. A DIFFERENZA di Occhi aperti: resta visibile il giorno dopo (entro 48h) =====
+  // ===== 5. Dal Passo 4: NON resta più visibile il giorno dopo (come Occhi
+  // aperti, sparisce col cambio di giornata di gioco: niente più 48h) =====
   T.fakeNow = '2026-09-22 07:00:05+02';
   await reload(page);
-  check('mar, entro 48h: A vede ancora il proprio video di lunedì', (await page.locator('#o-video-esercizi video').count()) === 1);
-  check('mar, entro 48h: A vede ancora quello di B (la giornata di lunedì resta chiusa)', (await page.locator('#o-p-video-esercizi video').count()) === 1);
-  await shot(page, '112_esercizi_oggi_ancora_visibile_martedi');
-
-  // ===== 6. Oltre le 48 ore: sparisce da solo =====
-  T.fakeNow = '2026-09-23 08:00:00+02';
-  await reload(page);
-  check('mer, oltre le 48h: il video di A non è più mostrato', !(await visible(page, '#o-video-esercizi')));
-  check('mer, oltre le 48h: il video di B non è più mostrato', !(await visible(page, '#o-p-video-esercizi')));
-  await shot(page, '113_esercizi_oggi_scaduto');
+  check('mar: il video di lunedì non è più "oggi" (proprio)', !(await visible(page, '#o-video-esercizi')));
+  check('mar: il video di lunedì non è più "oggi" (partner)', !(await visible(page, '#o-p-video-esercizi')));
+  await shot(page, '112_esercizi_oggi_sparito_il_giorno_dopo');
 
   check('nessun errore in console (A)', errors.length === 0, errors);
   check('nessun errore in console (B)', errorsB.length === 0, errorsB);

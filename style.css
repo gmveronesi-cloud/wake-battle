@@ -196,3 +196,13 @@ button.game-start { font-size: 22px; padding: 20px; background: var(--ok); color
    nativi del <video> (icona di ingrandimento). */
 .video-box { margin: 10px 0 0; text-align: center; }
 .video-box video { width: 100%; max-width: 280px; border-radius: 12px; background: #000; }
+
+/* Scheda "Istruzioni" nel Profilo (Passo 4): sezioni brevi con <details>
+   native, niente JS. */
+.instructions details { border-top: 1px solid var(--line); padding: 10px 0; }
+.instructions details:first-of-type { border-top: 0; padding-top: 0; }
+.instructions summary { font-weight: 600; cursor: pointer; }
+.instructions details[open] summary { margin-bottom: 8px; }
+.instructions p, .instructions ul, .instructions ol { color: var(--muted); margin: 0; padding-left: 20px; font-size: 15px; }
+.instructions p { padding-left: 0; }
+.instructions li { margin: 6px 0; }

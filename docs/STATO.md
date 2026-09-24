@@ -15,72 +15,31 @@ Le regole di gioco sono SOLO in docs/DECISIONI.md (prevale su tutto): qui non ri
 |---|---|---|---|
 | Memoria | ✓ | eseguito | ✓ |
 | Numeri in ordine | ✓ | eseguito | ✓ |
-| Colore della parola | ✓ (v7) | 06 eseguito; **sql/07_refactor_giochi.sql** ancora da eseguire (facoltativo, vedi sotto) | ✓ (già attivata da Gianmarco col 06) |
-| Riflessi | ✓ (v11, "Babbo/Schiacciami") | 10 eseguito (versione vecchia, superata); **sql/11_riflessi_babbo.sql** da eseguire | da attivare dopo la prova in beta |
-| Anagramma | ✓ (v12) | **sql/12_anagramma.sql** e **sql/13_anagramma_parole.sql** da eseguire | da attivare dopo la prova in beta |
-| Accendi la luce | ✓ (v16, rilevazione a punto di luce concentrato) | **sql/14_luce.sql** da eseguire (nessun nuovo file: le tarature sono solo lato client) | da attivare dopo la prova in beta (riverificare su telefono vero: vedi sotto) |
-| QR o codice a barre | ✓ (v18, secondo gioco con fotocamera, libreria ZXing vendorizzata, video in diretta senza barra) | **sql/15_qr.sql** da eseguire | da attivare dopo la prova in beta |
-| Caccia ai colori | ✓ (v19, terzo gioco con fotocamera, palette di 4 colori, video in diretta con barra) | **sql/16_caccia_colori.sql** da eseguire | da attivare dopo la prova in beta |
-| Trova l'oggetto | ✓ (v20, quarto gioco con fotocamera, nessuna IA: tocco manuale "Trovato!" + foto) | **sql/17_oggetto.sql** da eseguire | da attivare dopo la prova in beta |
-| Occhi aperti | ✓ (v21, quinto gioco con fotocamera, FRONTALE: registra un video di 10 s che si ferma da solo, nessuna IA) | **sql/18_occhi_aperti.sql** da eseguire | da attivare dopo la prova in beta |
-| Esercizi (video) | ✓ (v22, sesto e ultimo gioco con fotocamera, FRONTALE come Occhi aperti ma fermata MANUALE con "Fine registrazione", video visibile 48h invece di sparire col cambio di giornata) | **sql/19_esercizi.sql** da eseguire | da attivare dopo la prova in beta |
+| Colore della parola | ✓ (v7) | eseguito (06 + 07 refactor) | ✓ |
+| Riflessi | ✓ (v11, "Babbo/Schiacciami") | eseguito | ✓ |
+| Anagramma | ✓ (v12) | eseguito (12 + 13) | ✓ |
+| Accendi la luce | ✓ (v16, rilevazione a punto di luce concentrato) | eseguito | ✓ |
+| QR o codice a barre | ✓ (v18, secondo gioco con fotocamera, libreria ZXing vendorizzata, video in diretta senza barra) | eseguito | ✓ |
+| Caccia ai colori | ✓ (v19, terzo gioco con fotocamera, palette di 4 colori, video in diretta con barra) | eseguito | ✓ |
+| Trova l'oggetto | ✓ (v20, quarto gioco con fotocamera, nessuna IA: tocco manuale "Trovato!" + foto) | eseguito | ✓ |
+| Occhi aperti | ✓ (v21, quinto gioco con fotocamera, FRONTALE: registra un video di 10 s che si ferma da solo, nessuna IA) | eseguito | ✓ |
+| Esercizi (video) | ✓ (v22, sesto e ultimo gioco con fotocamera, FRONTALE come Occhi aperti ma fermata MANUALE con "Fine registrazione"; dal Passo 4 il video è visibile solo per la giornata di gioco, come Occhi aperti — non più 48h) | eseguito | ✓ |
 
-**PROSSIMO passo (nuova chat): tutti i giochi della lista sono fatti** — il passo successivo è il Passo 4, Comandi iOS (vedi "## Poi" più sotto).
+Tutti gli 11 giochi sono attivi (`enabled` e `game_live` a true), SQL 01..19 eseguiti in Supabase. Il lavoro sui singoli giochi è concluso.
 
-## Da fare ora (Gianmarco)
-Esercizi (nuovo, sesto e ultimo gioco con fotocamera, FRONTALE come "Occhi aperti"):
-1. Eseguire `sql/19_esercizi.sql` in Supabase (richiede 01..18 già eseguiti).
-2. Provare in beta il gioco "Esercizi": permesso fotocamera FRONTALE, video in diretta. Ti viene chiesto un esercizio tra 10 piegamenti, 20 squat, 20 affondi, plank 30 secondi (estratto a caso, mai uguale all'ultima volta). Tocca "Inizia": la registrazione parte, esegui l'esercizio inquadrato, poi tocca "Fine registrazione" per finire — a differenza di "Occhi aperti" NON si ferma da sola: è il tuo tocco a fermare il cronometro (rete di sicurezza a 3 minuti, oltre i quali si ferma comunque da sola). Se esci dall'app durante la registrazione, quella si scarta e riparte da zero in automatico appena torni. Il video resta visibile nella pagina di prova solo un attimo (mai salvato, come gli altri giochi in beta); nella sfida vera resta visibile nella schermata "Oggi", a te subito e al partner solo a giornata chiusa (come il suo tempo) — ma qui NON sparisce col cambio di giornata: resta per 48 ore piene dalla registrazione, quindi puoi ancora vederlo il giorno dopo. "Schermo intero" con l'icona di ingrandimento nativa del video.
-3. Se va bene, attivare nella sfida vera con:
-   `update public.challenge_types set enabled = true, game_live = true where code = 'esercizi';`
-
-Occhi aperti (nuovo, quinto gioco con fotocamera, il primo con la fotocamera FRONTALE):
-1. Eseguire `sql/18_occhi_aperti.sql` in Supabase (richiede 01..17 già eseguiti).
-2. Provare in beta il gioco "Occhi aperti": permesso fotocamera FRONTALE, video in diretta (ti vedi mentre ti registri). Un solo pulsante "Inizia" fa partire la registrazione di un video di 10 secondi: tieni gli occhi aperti, la registrazione si ferma DA SOLA passati i 10 secondi e il gioco finisce subito (nessun pulsante da toccare per confermare il battito finale, nessuna anteprima da rivedere prima di inviare). Se esci dall'app durante la registrazione, quella si scarta e riparte da zero in automatico appena torni. Il video resta visibile nella pagina di prova solo un attimo (mai salvato, come gli altri giochi in beta); nella sfida vera resta visibile nella schermata "Oggi", a te subito e al partner solo a giornata chiusa (come il suo tempo), e sparisce da solo il giorno dopo. "Schermo intero" si ottiene toccando l'icona di ingrandimento nativa del video (nessuna galleria di miniature come "Trova l'oggetto": qui è un solo video).
-3. Se va bene, attivare nella sfida vera con:
-   `update public.challenge_types set enabled = true, game_live = true where code = 'occhi';`
-
-Trova l'oggetto (quarto gioco con fotocamera):
-1. Eseguire `sql/17_oggetto.sql` in Supabase (richiede 01..16 già eseguiti).
-2. Provare in beta il gioco "Trova l'oggetto": permesso fotocamera (posteriore), video in diretta (serve per mirare), NIENTE riconoscimento reale (deciso apposta: nessuna IA). Vengono richiesti 5 oggetti di fila da una lista di 15 comuni in casa (es. spazzolino, tazza, frigorifero, bottiglia, sedia...): per ognuno vai a cercarlo, inquadralo e tocca il pulsante "Trovato!" per confermare da solo (nessun mantenimento, basta il tocco, come "QR"). Ogni tocco scatta anche una piccola foto: alla fine restano visibili in una galleria di miniature nella pagina di prova (solo lì, non si salvano) — tocca una miniatura per vederla a schermo intero, tocca di nuovo per richiuderla. Nella sfida vera le stesse foto restano visibili nella schermata "Oggi" (stesso tocco per ingrandirle), in due gallerie separate: le proprie (subito) e quelle del partner (solo a giornata chiusa, come il suo tempo, ma visibili su entrambi i telefoni una volta chiusa) — spariscono da sole il giorno dopo, nessuna azione richiesta.
-3. Se va bene, attivare nella sfida vera con:
-   `update public.challenge_types set enabled = true, game_live = true where code = 'oggetto';`
-
-Caccia ai colori (terzo gioco con fotocamera):
-1. Eseguire `sql/16_caccia_colori.sql` in Supabase (richiede 01..15 già eseguiti).
-2. Provare in beta il gioco "Caccia ai colori": permesso fotocamera (posteriore), video in diretta (serve per mirare) con una barra che mostra il progresso e poi il countdown del mantenimento. Vengono richiesti 5 colori di fila (palette: rosso, verde, blu, giallo): per ognuno trova in giro per casa un oggetto di quel colore e inquadralo da vicino finché la fotocamera lo riconosce per un secondo e mezzo di fila, poi si passa da soli al colore successivo. Se non riconosce: prova ad avvicinare l'oggetto o a inquadrarlo meglio (deve riempire una parte consistente dell'inquadratura), o cambia illuminazione se il colore risulta troppo scuro/chiaro.
-3. Se va bene, attivare nella sfida vera con:
-   `update public.challenge_types set enabled = true, game_live = true where code = 'caccia_colori';`
-
-QR o codice a barre (secondo gioco con fotocamera):
-1. Eseguire `sql/15_qr.sql` in Supabase (richiede 01..14 già eseguiti).
-2. Provare in beta il gioco "QR o codice a barre": permesso fotocamera (posteriore), MOSTRA il video in diretta (serve per mirare), niente barra. Inquadra un QR o un codice a barre qualsiasi (un'etichetta, una confezione, qualunque cosa): appena la libreria lo legge (basta un frame, nessun tempo di attesa come "Accendi la luce") il gioco finisce da solo. Se non legge: prova ad avvicinare/allontanare finché il codice riempie bene l'inquadratura.
-3. Se va bene, attivare nella sfida vera con:
-   `update public.challenge_types set enabled = true, game_live = true where code = 'qr';`
-
-Accendi la luce (primo gioco con fotocamera — 2ª taratura del 23/09: ora rileva un PUNTO di luce concentrato invece della luminosità media di tutta l'inquadratura, dopo che la media era risultata troppo esigente/imprecisa):
-1. Se non ancora fatto: eseguire `sql/14_luce.sql` in Supabase (richiede 01..13 già eseguiti). Se l'avevi già eseguito le volte scorse NON serve rilanciarlo: queste tarature sono solo lato client (games.js), nessun nuovo file SQL.
-2. Riprovare in beta il gioco "Accendi la luce" DA UN TELEFONO: permesso fotocamera (posteriore), NON mostra il video in diretta (solo una barra col livello rilevato). Inquadra da vicino una lampada/torcia spenta, poi accendila e tieni il punto luminoso inquadrato: la barra sale quando la fotocamera vede abbastanza pixel "bruciati" (vicini al bianco) in una zona concentrata, poi mostra il countdown dei secondi mancanti (10 s) — basta un punto di luce, non serve che tutta la stanza sia illuminata. Se in pratica non va ancora bene (troppo/poco sensibile, falsi positivi con luce ambiente, o il tempo non va bene) dimmi cosa noti nel dettaglio: soglia per pixel attuale 225/255, minimo 15 pixel, tempo 10 s.
-3. Se va bene, attivare nella sfida vera con:
-   `update public.challenge_types set enabled = true, game_live = true where code = 'luce';`
-
-Anagramma (nuovo):
-1. Eseguire `sql/12_anagramma.sql` e poi `sql/13_anagramma_parole.sql` in Supabase (richiede 01..11 già eseguiti; il 13 amplia la lista da 79 a 146 parole possibili, nessun'altra regola cambia).
-2. Provare in beta il gioco "Anagramma": 5 parole di fila, lettere mescolate come tessere da toccare nell'ordine giusto per ricomporre la parola. Un tocco sbagliato lampeggia di rosso senza penalità: si continua sulla stessa parola (nessuna ripartenza). Parola giusta → passa da sola alla successiva.
-3. Se va bene, attivare nella sfida vera con:
-   `update public.challenge_types set enabled = true, game_live = true where code = 'anagramma';`
-
-Riflessi (a Gianmarco non piaceva la prima versione, cambiata):
-1. Eseguire `sql/11_riflessi_babbo.sql` in Supabase (richiede 01..10 già eseguiti, incluso il 10 che hai già lanciato: non fa danno, la nuova versione lo sostituisce).
-2. Provare in beta il gioco "Riflessi": dopo un'attesa compaiono due riquadri uguali per meno di un secondo, "BABBO" e "SCHIACCIAMI!" (posizione che si alterna a ogni round), poi restano al loro posto ma vuoti. Tocca "SCHIACCIAMI!" per andare avanti; se tocchi "BABBO" si riparte dal round 1. 5 round di fila per finire.
-3. Se va bene, attivare nella sfida vera con:
-   `update public.challenge_types set enabled = true, game_live = true where code = 'riflessi';`
-
-Colore della parola è già attivo nella sfida (06 eseguito e attivato prima del refactor). Resta solo, quando vuoi, facoltativo:
-1. Eseguire `sql/07_refactor_giochi.sql` in Supabase: sostituisce wb_game_params/wb_check_answer con lo stesso comportamento del 06, solo riorganizzato per gioco. Non serve riprovare in beta né toccare game_live: il gioco resta attivo come già impostato, nessun'altra azione richiesta.
-
-"Trova l'intruso" eliminato (non piace a Gianmarco): non è mai stato attivato nella sfida vera, nessun dato storico da migrare.
-1. Eseguire `sql/09_rimuovi_intruso.sql` in Supabase (richiede 01..08 già eseguiti). Toglie la riga da challenge_types, rimette wb_game_params/wb_check_answer come dopo il 07 e droppa wb_gp_intruso/wb_ca_intruso. Nessuna prova in beta né altra azione richiesta.
+## Da fare ora (Gianmarco) — Passo 4 (Comandi iOS + rifiniture)
+1. Eseguire in Supabase, in ordine, i tre nuovi file (richiedono 01..19 già eseguiti):
+   - `sql/20_video_a_richiesta.sql` — get_today() manda solo un flag per foto/video (scaricati a richiesta), Esercizi passa da 48h a "solo la giornata" come Occhi aperti.
+   - `sql/21_salta.sql` — pulsante "Salta" (giorno di assenza).
+   - `sql/22_bilanciamento.sql` — bilanciamento 3/2 fisica/schermo per settimana, con alternanza tra settimane.
+   Nessuna riga di attivazione da lanciare: questi tre file non toccano `challenge_types`, solo funzioni.
+2. Provare nella sfida vera (non serve beta, non sono giochi):
+   - "Vedi foto"/"Guarda video" in "Oggi" dopo aver fatto "Trova l'oggetto"/"Occhi aperti"/"Esercizi": deve comparire un pulsante, e il contenuto deve caricarsi al tocco (non prima).
+   - "Salta": premilo un mattino in cui manchi almeno 30 minuti alla tua sveglia, verifica che diventi "Annulla salto" e che il partner non veda nulla di insolito finché non finisce di giocare.
+   - Nell'arco di due/tre settimane, controlla che la sfida non proponga mai più di 3 giochi della stessa categoria (fotocamera/schermo) in una settimana.
+3. Creare in Comandi (app Comandi di iOS) su OGNI iPhone, seguendo il riepilogo passo-passo di questa chat: i comandi "WB Imposta sveglie", "WB Fatto", "WB Salta", "WB Sera", "WB Apri" e le due automazioni (Sera alle 21:00, Sveglia fermata). Poi, nell'app, Profilo → imposta orario e giorni → tocca "Aggiorna sveglie" quando proposto.
+4. IMPORTANTE da verificare e riferire: dentro l'app installata (icona in Home, non Safari), un pulsante che lancia `shortcuts://run-shortcut?name=...` apre davvero Comandi? Se sì, tutto il flusso automatico funziona; se no, va sostituito con un pulsante che mostra solo il nome del comando da lanciare a mano (dimmelo e lo sistemo).
+5. Prova la scheda "Istruzioni" in Profilo: dimmi se qualche sezione non è chiara o manca qualcosa per chi la legge la prima volta.
 
 ## Refactor 22/09: un file SQL a parte per gioco
 Da sql/07 in poi, wb_game_params/wb_check_answer sono dispatcher: ogni gioco ha le sue funzioni private (wb_gp_<gioco>, wb_ca_<gioco>) in un file a sé. Un gioco nuovo non ricopia più le funzioni dei giochi vecchi — solo una riga in più in ciascun dispatcher. Comportamento identico al 06, verificato dai test (dettagli in STORICO.md).
@@ -105,6 +64,7 @@ Da sql/07 in poi, wb_game_params/wb_check_answer sono dispatcher: ogni gioco ha 
 - Occhi aperti (quinto gioco con fotocamera, il primo con la FRONTALE: `cameraGame({facingMode:'user', record:true, recordMs:10000, videoConstraints:{width:{ideal:320}, height:{ideal:240}}})`, nuova modalità `record` in games.js): niente cameraLoop/manual, `recordVideo()` usa MediaRecorder sullo stream già aperto (bitrate ~1 Mbps, punta a ~1,5 MB per 10 s) e chiama da sola `ctrl.finish({fatto:true, video:dataURL})` allo scadere. Se `document.hidden` diventa true durante la registrazione (evento `visibilitychange`), la registrazione in corso si scarta (i chunk non vengono usati) e ne riparte subito un'altra identica sullo stesso stream, senza richiedere un nuovo tocco su "Inizia" né una nuova richiesta di permesso. Il video (una stringa, non un array come le foto di "Trova l'oggetto") viaggia a parte con `save_eye_video()` (sql/18, tabella `eye_videos`, stesso schema di `object_photos` ma un campo `text` invece di `jsonb`, limite 3.000.000 byte), mai in beta. Reso con i controlli nativi del tag `<video>` (niente lightbox dedicata: l'icona di ingrandimento nativa basta per "schermo intero"). La CSP (`index.html`/`beta.html`) aveva solo `img-src 'self' data:` per le foto: caricare un `<video src="data:video/...">` richiede anche `media-src 'self' data:`, altrimenti il browser lo blocca in silenzio (nessun errore visibile in pagina, solo in console) — aggiunta qui, prima non serviva. ui_test_18 usa `start({camera:true})` (fixture di default `luce.y4m`: qui non c'è nessuna analisi dei pixel, basta che MediaRecorder produca un blob) e simula la perdita di focus sovrascrivendo `document.hidden` via `Object.defineProperty` + un `dispatchEvent(new Event('visibilitychange'))` iniettato nella pagina (non serve controllo OS reale sulle schede).
 - Esercizi (sesto e ultimo gioco con fotocamera, FRONTALE come Occhi aperti, ma fermata MANUALE): `recordVideo()` (games.js) ha una nuova opzione `manualStop` — se `cameraGame()` riceve `opts.stopLabel` (es. "Fine registrazione") mostra un pulsante che chiama `ctrl.stopRecording()` (nuovo metodo esposto dal controllo), il testo conta i secondi TRASCORSI invece del countdown, e `opts.recordMs` diventa solo una rete di sicurezza (qui 3 minuti) invece di una durata fissa: la perdita di focus durante la registrazione (riavvio automatico) resta invariata, riusata identica. L'esercizio assegnato (`wb_gp_esercizi()`, sql/19) non è mai uguale all'ultimo assegnato alla STESSA coppia: legge `couple_days` filtrando su quella coppia e `challenge = 'esercizi'`, non su "il giorno prima" (che sarebbe comunque impossibile per la regola #10). Novità più delicata: il video NON sparisce al cambio di "giornata di gioco" come tutti gli altri (foto/video degli altri giochi sono filtrati per `day = d`, il giorno corrente): `save_exercise_video()`/`exercise_videos` (stesso schema di `eye_videos` ma limite 34.000.000 byte, per via del caso limite di 3 minuti di registrazione invece di 10 secondi fissi) e `get_today()` mostrano invece l'ultimo video entro 48 ORE PIENE dalla registrazione, a prescindere dal giorno; quello del partner resta gated sulla chiusura della SUA giornata di ripresa (`wb_day_rows(v_couple, ev.day)`, non quella di "oggi"). Conseguenza lato app.js: `#o-video-esercizi` (a differenza di `#o-video`) sta FUORI da `#o-result` in index.html, altrimenti sarebbe nascosto ogni volta che "oggi" è di nuovo "in corso" con una nuova challenge (`#o-p-video-esercizi`, come `#o-p-video`, era già fuori da qualunque gate per via del disegno di "Partner"). `finishGame()` (app.js) distingue `save_eye_video` da `save_exercise_video` leggendo il codice del gioco da `gameKey` (stessa forma di risposta `{fatto:true, video}` per entrambi). ui_test_19 tocca il pulsante "Fine registrazione" invece di aspettare (più veloce di Occhi aperti) e verifica la persistenza a 48 ore semplicemente spostando `T.fakeNow` in avanti (l'orologio del server è finto, nessuna attesa reale) prima di un reload; verifica anche che il riavvio su perdita di focus funzioni ancora con la nuova modalità a fermata manuale. Aggiunto dopo (chiesto da Gianmarco): `cameraGame()` ha una nuova opzione `title`, mostrata come titolo in cima alla schermata di svolgimento (classe CSS `.game-title`, sopra il testo dei secondi) — per Esercizi è il nome dell'esercizio da fare, con l'iniziale maiuscola; opzione generica, riusabile da altri giochi con fotocamera se servisse.
 - Orologio finto: wb_now legge 'wb.fake_now'.
+- Passo 4 (video a richiesta, "Salta", bilanciamento, Comandi iOS, Istruzioni — dettagli in STORICO.md): test_20.py (19, video/foto a richiesta) + test_17/18/19.py riscritti per i flag/RPC nuovi (19 anche per la scadenza a 24h, non più 48h) + ui_test_17/18/19.js aggiornati per il tocco su "Vedi foto"/"Guarda video"; test_21.py (39) + ui_test_21.js (21, "Salta"); test_22.py (12, bilanciamento estrazione); ui_test_23.js (14, "Sono sveglio"/"Aggiorna sveglie", solo la parte verificabile senza un iPhone vero). La nota sulla persistenza a 48 ore di "Esercizi" più sopra (bullet Esercizi) è superata: da questo passo si comporta come Occhi aperti.
 
 ## Poi
-- Passo 4 — Comandi iOS (sveglie di controllo, comando "WB Fatto", automazione serale).
+Nessun passo nuovo pianificato: in attesa del collaudo di Gianmarco sul Passo 4 (in particolare se il link `shortcuts://` apre davvero Comandi dentro l'app installata — vedi "Da fare ora" più sopra).

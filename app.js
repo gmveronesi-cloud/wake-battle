@@ -1,5 +1,5 @@
 'use strict';
-// Wake Battle v24 — Passo 1 (accesso + coppia) + Passo 2 (sveglie, punteggi) + Passo 3 (giochi veri: Memoria, Numeri in ordine, Colore della parola, Riflessi, Anagramma, Accendi la luce, QR o codice a barre, Caccia ai colori, Trova l'oggetto, Occhi aperti, Esercizi).
+// Wake Battle v25 — Passo 1 (accesso + coppia) + Passo 2 (sveglie, punteggi) + Passo 3 (giochi veri: Memoria, Numeri in ordine, Colore della parola, Riflessi, Anagramma, Accendi la luce, QR o codice a barre, Caccia ai colori, Trova l'oggetto, Occhi aperti, Esercizi) + Passo 4 (video/foto a richiesta, "Salta", bilanciamento dell'estrazione, comandi iOS, scheda Istruzioni).
 // Regola di sicurezza: i testi degli utenti vanno SEMPRE in textContent, mai in innerHTML.
 // Tempi e punti li decide il server: l'app mostra solo quello che il server risponde.
 
@@ -31,6 +31,77 @@
   let selectedDays = new Set();
   let game = null;           // gioco montato in Oggi
   let gameKey = null;        // giorno + codice del gioco montato
+  let gameStarted = false;   // il pulsante "Sono sveglio" sparisce anche appena si tocca il gioco
+  let sveglioTrackedDay = null;
+  let pendingShortcut = null;   // nome del comando iOS appena lanciato (per il "Fatto?" al ritorno)
+
+  // ---------- Comandi iOS (v25): link "shortcuts://" per rilanciare i comandi ----------
+  // Formato non documentato da Apple, ma verificato da Gianmarco il 24/09
+  // su iOS 26 dentro l'app installata da Home: un tocco su questo link
+  // apre Comandi. Se invece si apre Safari: l'istruzione è "apri l'app
+  // dall'icona" (vedi scheda Istruzioni). L'app non può sapere se il
+  // comando è davvero riuscito: al ritorno mostra un promemoria breve.
+  function runShortcut(name, inputText) {
+    let url = 'shortcuts://run-shortcut?name=' + encodeURIComponent(name);
+    if (inputText) url += '&input=text&text=' + encodeURIComponent(inputText);
+    pendingShortcut = name;
+    const a = document.createElement('a');
+    a.href = url;
+    a.click();
+  }
+
+  // localStorage in try/catch: può fallire (privacy, spazio pieno), mai
+  // bloccare l'app per questo.
+  function lsGet(key) {
+    try { const v = localStorage.getItem(key); return v == null ? null : JSON.parse(v); } catch (e) { return null; }
+  }
+  function lsSet(key, val) {
+    try { if (val == null) localStorage.removeItem(key); else localStorage.setItem(key, JSON.stringify(val)); } catch (e) { /* ignorato */ }
+  }
+
+  // "WB Imposta sveglie" finisce riaprendo l'app con ?sveglie=HH:MM&giorni=12345:
+  // l'app lo salva come conferma che Orologio è allineato a QUEI valori.
+  (function readShortcutReturnParams() {
+    const p = new URLSearchParams(location.search);
+    if (p.has('sveglie') || p.has('giorni')) {
+      const giorni = (p.get('giorni') || '').split('').map(Number).filter((n) => n >= 1 && n <= 5).sort();
+      lsSet('wb_device_alarm', { orario: p.get('sveglie') || '', giorni });
+      const url = new URL(location.href);
+      url.search = '';
+      history.replaceState(null, '', url);
+    }
+  })();
+
+  // Sveglie non ancora allineate con Orologio: impostato dopo ogni salvataggio
+  // riuscito di set_alarm (appliesToday = il cambio vale già da oggi secondo
+  // la risposta del server), azzerato quando wb_device_alarm combacia.
+  function alarmSyncPending() {
+    const pending = lsGet('wb_pending_alarm');
+    if (!pending) return null;
+    const device = lsGet('wb_device_alarm') || {};
+    if (device.orario === pending.orario && JSON.stringify(device.giorni || []) === JSON.stringify(pending.giorni || [])) {
+      lsSet('wb_pending_alarm', null);
+      return null;
+    }
+    return pending;
+  }
+  // Il promemoria/pulsante va mostrato subito se il cambio vale da oggi, o se
+  // oggi non c'è una sveglia in sospeso (già chiusa o inesistente); altrimenti
+  // solo dopo che la giornata di oggi si chiude (per non spostare la sveglia
+  // di Orologio di un giorno già in corso).
+  function alarmSyncVisible(pending) {
+    if (!pending) return false;
+    if (pending.appliesToday) return true;
+    if (!today) return false;
+    return ['nessuna_sveglia', 'fatto', 'scaduto', 'saltato'].includes(today.io.stato);
+  }
+
+  // "Sono sveglio, spegni le sveglie" (v25): ricordato lato client per quel
+  // giorno una volta toccato (nessuna RPC: spegne solo le sveglie di
+  // controllo in Orologio, il server non c'entra).
+  function sveglioDismissed(giorno) { return lsGet('wb_sveglio_' + giorno) === true; }
+  function dismissSveglio(giorno) { lsSet('wb_sveglio_' + giorno, true); }
+  function markGameStarted() { gameStarted = true; $('b-sveglio').hidden = true; }
 
   // ---------- UI helpers ----------
   function show(viewId) {
@@ -373,13 +444,48 @@
   }
   $('foto-lightbox').addEventListener('click', () => { $('foto-lightbox').hidden = true; });
 
-  // Le miniature scattate durante la partita, proprie e del partner
-  // (get_today le manda già filtrate per visibilità/24 ore).
-  function renderFoto(id, foto) {
-    const box = $(id);
+  // ---------- Video/foto scaricati SOLO a richiesta (v25) ----------
+  // get_today() manda solo un flag "c'è" (ha_foto/ha_video/ha_video_esercizi):
+  // il contenuto vero si scarica al tocco di "Vedi foto"/"Guarda video" con
+  // get_object_photos/get_eye_video/get_exercise_video, e solo allora si
+  // converte il data URL ricevuto in Blob + URL.createObjectURL (più
+  // affidabile di un <video src="data:..."> diretto su Safari iPhone).
+  // Cache per giorno (si azzera da sola al cambio di giornata, revocando
+  // gli URL creati) cosi' il download non riparte ad ogni giro di
+  // loadToday() (ogni 20s) una volta fatto.
+  let media = { giorno: null, io: {}, partner: {} };
+  function resetMediaIfNewDay(giorno) {
+    if (media.giorno === giorno) return;
+    ['io', 'partner'].forEach((who) => {
+      const m = media[who] || {};
+      if (m.foto) m.foto.forEach((u) => URL.revokeObjectURL(u));
+      if (m.video) URL.revokeObjectURL(m.video);
+      if (m.video_esercizi) URL.revokeObjectURL(m.video_esercizi);
+    });
+    media = { giorno, io: {}, partner: {} };
+  }
+  function dataUrlToObjectUrl(dataUrl) {
+    const comma = dataUrl.indexOf(',');
+    const mime = dataUrl.slice(5, comma).split(';')[0];
+    const bin = atob(dataUrl.slice(comma + 1));
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return URL.createObjectURL(new Blob([bytes], { type: mime }));
+  }
+  function mediaButton(box, label, onClick) {
+    box.hidden = false;
     box.replaceChildren();
-    box.hidden = !(foto && foto.length);
-    (foto || []).forEach((src) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'secondary small-btn';
+    btn.textContent = label;
+    btn.addEventListener('click', () => busy(btn, onClick));
+    box.appendChild(btn);
+  }
+  function renderFotoGrid(box, urls) {
+    box.hidden = false;
+    box.replaceChildren();
+    urls.forEach((src) => {
       const img = document.createElement('img');
       img.src = src;
       img.alt = '';
@@ -387,28 +493,46 @@
       box.appendChild(img);
     });
   }
-
-  // "Occhi aperti"/"Esercizi": il video registrato durante la partita,
-  // proprio o del partner (get_today lo manda già filtrato per visibilità:
-  // 24 ore su "oggi" per 'video', 48 ore piene per 'video_esercizi', come
-  // 'foto'). A differenza delle foto, "schermo intero" si ottiene con i
-  // controlli nativi del <video> (icona di ingrandimento): nessuna
-  // lightbox dedicata.
-  function renderVideo(id, src) {
-    const box = $(id);
+  function renderVideoEl(box, src) {
+    box.hidden = false;
     box.replaceChildren();
-    box.hidden = !src;
-    if (!src) return;
     const video = document.createElement('video');
     video.src = src;
     video.controls = true;
     video.playsInline = true;
     box.appendChild(video);
   }
+  // "Trova l'oggetto": galleria propria (who:'io') o del partner.
+  function mountFotoBox(id, who, ha) {
+    const box = $(id);
+    const st = media[who];
+    if (!ha) { box.hidden = true; box.replaceChildren(); st.foto = undefined; return; }
+    if (st.foto) { renderFotoGrid(box, st.foto); return; }
+    mediaButton(box, 'Vedi foto', async () => {
+      const r = await call('get_object_photos', { p_partner: who === 'partner' });
+      if (r && r.ok && r.foto) { st.foto = r.foto.map(dataUrlToObjectUrl); renderFotoGrid(box, st.foto); }
+    });
+  }
+  // "Occhi aperti"/"Esercizi": video proprio o del partner. field:
+  // 'video'|'video_esercizi', rpcName: get_eye_video|get_exercise_video.
+  function mountVideoBox(id, who, field, ha, rpcName) {
+    const box = $(id);
+    const st = media[who];
+    if (!ha) { box.hidden = true; box.replaceChildren(); st[field] = undefined; return; }
+    if (st[field]) { renderVideoEl(box, st[field]); return; }
+    mediaButton(box, 'Guarda video', async () => {
+      const r = await call(rpcName, { p_partner: who === 'partner' });
+      if (r && r.ok && r.video) { st[field] = dataUrlToObjectUrl(r.video); renderVideoEl(box, st[field]); }
+    });
+  }
 
   function renderToday() {
     const t = today;
     const io = t.io, pa = t.partner;
+
+    if (sveglioTrackedDay !== t.giorno) { sveglioTrackedDay = t.giorno; gameStarted = false; }
+    $('b-sveglio').hidden = !(io.stato === 'in_corso' && !gameStarted && !sveglioDismissed(t.giorno));
+    $('o-alarm-warn').hidden = !alarmSyncVisible(alarmSyncPending());
 
     $('o-alarm').textContent = hm(io.sveglia);
     $('o-play').hidden = io.stato !== 'in_corso';
@@ -421,8 +545,10 @@
       in_corso: '',
       fatto: '',
       scaduto: '',
+      saltato: 'Hai saltato oggi.',
     };
     $('o-status').textContent = statusText[io.stato] || '';
+    $('b-salta').textContent = io.salto_annullabile ? 'Annulla salto' : 'Salta';
 
     const code = io.stato === 'in_corso' ? gameCode(io.challenge) : null;
     if (io.stato === 'in_corso' && io.challenge) {
@@ -442,6 +568,7 @@
         gameKey = key;
         $('o-game').hidden = false;
         game = window.WBGames.mount(code, $('o-game'), io.challenge.parametri, { onDone: finishGame });
+        $('o-game').addEventListener('pointerdown', markGameStarted, { once: true });
       }
     } else if (game) {
       stopGame();
@@ -455,9 +582,10 @@
       $('o-result-main').className = 'result lose';
     }
     $('o-result-ch').textContent = io.challenge ? 'Challenge: ' + io.challenge.nome : '';
-    renderFoto('o-foto', io.foto);
-    renderVideo('o-video', io.video);
-    renderVideo('o-video-esercizi', io.video_esercizi);
+    resetMediaIfNewDay(t.giorno);
+    mountFotoBox('o-foto', 'io', io.ha_foto);
+    mountVideoBox('o-video', 'io', 'video', io.ha_video, 'get_eye_video');
+    mountVideoBox('o-video-esercizi', 'io', 'video_esercizi', io.ha_video_esercizi, 'get_exercise_video');
 
     // partner
     $('o-p-label').textContent = pa.nome || partnerName;
@@ -467,16 +595,29 @@
       nascosto: pa.sveglia ? 'Il risultato si vede a fine giornata.' : '',
       fatto: 'Fatto in ' + dur(pa.secondi),
       scaduto: 'Tempo scaduto',
+      saltato: 'Giornata annullata: ha saltato.',
     }[pa.stato] || '';
-    renderFoto('o-p-foto', pa.foto);
-    renderVideo('o-p-video', pa.video);
-    renderVideo('o-p-video-esercizi', pa.video_esercizi);
+    mountFotoBox('o-p-foto', 'partner', pa.ha_foto);
+    mountVideoBox('o-p-video', 'partner', 'video', pa.ha_video, 'get_eye_video');
+    mountVideoBox('o-p-video-esercizi', 'partner', 'video_esercizi', pa.ha_video_esercizi, 'get_exercise_video');
 
     // esito della giornata
     const b = $('o-day');
     b.className = 'banner';
     const wd = ymdParts(t.giorno).wd;
-    if (!t.conta) {
+    if (io.stato === 'saltato' && !t.chiuso) {
+      b.textContent = 'Hai saltato: oggi non conta.';
+      b.hidden = false;
+    } else if (t.chiuso && (pa.stato === 'saltato' || io.stato === 'saltato')) {
+      // priorità sul generico "non conta" qui sotto: 'conta' è vero fino a
+      // che la MIA giornata non si chiude (il partner non deve accorgersi
+      // del salto prima), quindi a chiusura avvenuta va sempre specificato
+      // di chi è stato il salto, non un generico "non conta".
+      b.textContent = pa.stato === 'saltato'
+        ? 'Giornata annullata: ' + (pa.nome || partnerName) + ' ha saltato.'
+        : 'Giornata annullata: hai saltato tu.';
+      b.hidden = false;
+    } else if (!t.conta) {
       if (wd === 0 || wd === 6) b.textContent = 'Weekend: niente sfida.';
       else if (!io.sveglia && !pa.sveglia) b.textContent = 'Oggi niente sfida.';
       else b.textContent = 'Oggi non conta: serve la sveglia di entrambi.';
@@ -531,6 +672,44 @@
   }
 
   $('b-done').addEventListener('click', (ev) => busy(ev.currentTarget, () => sendDone('complete_challenge')));
+
+  // ---------- "Salta" (giorno di assenza, v25) ----------
+  const SALTA_ERRORS = {
+    nessuna_sveglia_futura: 'Non hai nessuna sveglia futura da saltare.',
+    nessun_salto: 'Nessun salto da annullare.',
+    troppo_tardi: 'Troppo tardi: mancano meno di 30 minuti alla sveglia.',
+    senza_coppia: 'Prima collegati al partner.',
+  };
+  $('b-salta').addEventListener('click', (ev) => busy(ev.currentTarget, async () => {
+    msg('');
+    if (today && today.io.salto_annullabile) {
+      const r = await call('unskip_day');
+      if (!r) return;
+      if (!r.ok) { msg(SALTA_ERRORS[r.error] || 'Non registrato. Riprova.'); return; }
+      msg('Salto annullato per ' + dayLabel(r.giorno) + '.', true);
+      const s = await call('get_settings');
+      if (s && s.ok && s.io) runShortcut('WB Imposta sveglie', s.io.orario + ';' + s.io.giorni.join(''));
+    } else {
+      const r = await call('skip_day');
+      if (!r) return;
+      if (!r.ok) { msg(SALTA_ERRORS[r.error] || 'Non registrato. Riprova.'); return; }
+      msg('Hai saltato ' + dayLabel(r.giorno) + '.', true);
+      runShortcut('WB Salta');
+    }
+    await loadToday();
+  }));
+
+  // ---------- "Sono sveglio" / "Aggiorna sveglie" (v25) ----------
+  $('b-sveglio').addEventListener('click', () => {
+    if (today) dismissSveglio(today.giorno);
+    $('b-sveglio').hidden = true;
+    runShortcut('WB Fatto');
+  });
+  $('b-aggiorna-sveglie').addEventListener('click', () => {
+    const pending = lsGet('wb_pending_alarm');
+    if (!pending) return;
+    runShortcut('WB Imposta sveglie', pending.orario + ';' + pending.giorni.join(''));
+  });
 
   // "Trova l'oggetto" aggiunge alla risposta un array "foto" (le miniature
   // scattate ad ogni tocco), "Occhi aperti"/"Esercizi" una stringa "video"
@@ -711,6 +890,11 @@
       if (r.domani.stato === 'invariato') {
         text += ' Anche domani resta ' + (r.domani.sveglia ? 'alle ' + hm(r.domani.sveglia) : 'senza sveglia') + ' (meno di 30 minuti).';
       }
+      lsSet('wb_pending_alarm', {
+        orario: time.slice(0, 5),
+        giorni: Array.from(selectedDays).sort(),
+        appliesToday: r.oggi.stato === 'aggiornato',
+      });
       msg(text, true);
       $('o-setup').hidden = true;
       await loadSettings();
@@ -740,6 +924,11 @@
   // Quando l'app torna in primo piano, riallinea lo stato
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') return;
+    if (pendingShortcut) {
+      const name = pendingShortcut;
+      pendingShortcut = null;
+      msg('Fatto? Se «' + name + '» non ha funzionato, apri Comandi e lancialo a mano.', true);
+    }
     if (!$('v-main').hidden) { setTab(tab); return; }
     if ($('pair-wait').hidden) refresh();
   });

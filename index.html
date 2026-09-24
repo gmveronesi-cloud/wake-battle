@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' data:; connect-src 'self' https://rxxqdseojllcniowrzxm.supabase.co wss://rxxqdseojllcniowrzxm.supabase.co; base-uri 'none'; form-action 'none'; object-src 'none'">
+        content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://rxxqdseojllcniowrzxm.supabase.co wss://rxxqdseojllcniowrzxm.supabase.co; base-uri 'none'; form-action 'none'; object-src 'none'">
   <meta name="referrer" content="no-referrer">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#0f1115">
   <title>Wake Battle</title>
-  <link rel="stylesheet" href="style.css?v=21">
+  <link rel="stylesheet" href="style.css?v=25">
 </head>
 <body>
   <main id="app">
@@ -106,12 +106,19 @@
           <button id="b-go-profile" type="button">Imposta ora</button>
         </div>
 
+        <div id="o-alarm-warn" class="banner" hidden>
+          <p>Sveglie di Orologio non aggiornate.</p>
+          <button id="b-aggiorna-sveglie" class="secondary small-btn" type="button">Aggiorna sveglie</button>
+        </div>
+
         <div class="card">
           <p class="label">La tua sveglia</p>
           <p id="o-alarm" class="clock"></p>
           <p id="o-status" class="hint"></p>
+          <button id="b-salta" class="secondary small-btn" type="button">Salta</button>
 
           <div id="o-play" hidden>
+            <button id="b-sveglio" class="done" type="button" hidden>Sono sveglio, spegni le sveglie</button>
             <p id="o-timer" class="timer">0:00.0</p>
             <div class="bar"><div id="o-bar"></div></div>
             <p id="o-left" class="small center"></p>
@@ -129,13 +136,12 @@
             <p id="o-result-ch" class="small center"></p>
             <div id="o-foto" class="foto-grid" hidden></div>
             <div id="o-video" class="video-box" hidden></div>
+            <!-- Dal Passo 4 (video a richiesta) 'video_esercizi' si comporta
+                 come 'video' di Occhi aperti: visibile solo per la giornata
+                 di gioco (non più 48 ore piene), quindi ora dentro o-result
+                 come lui. -->
+            <div id="o-video-esercizi" class="video-box" hidden></div>
           </div>
-          <!-- "Esercizi": a differenza di 'o-video' (dentro o-result, sparisce
-               col cambio di giornata insieme allo stato "fatto" di oggi) resta
-               visibile fino a 48 ore dalla registrazione, anche il giorno dopo
-               mentre la sveglia di oggi è ancora "in corso": va fuori da
-               o-result, sempre valutato. -->
-          <div id="o-video-esercizi" class="video-box" hidden></div>
         </div>
 
         <div class="card">
@@ -215,6 +221,65 @@
           <a id="l-beta" class="button secondary" href="beta.html">Prova i giochi (beta)</a>
         </div>
 
+        <div class="card instructions">
+          <p class="label">Istruzioni</p>
+          <details>
+            <summary>Come funziona in breve</summary>
+            <ul>
+              <li>Ognuno sceglie il suo orario di sveglia (lun–ven). Alla sveglia scopri la sfida del giorno, uguale per tutti e due.</li>
+              <li>Il cronometro parte all'orario della sveglia, non quando apri l'app. Hai 5 minuti per finire.</li>
+              <li>Vince il giorno chi finisce prima. Chi non finisce dà il punto all'altro. Stesso tempo: mezzo punto a testa.</li>
+              <li>Sabato alle 12:00 il verdetto della settimana e il premio.</li>
+            </ul>
+          </details>
+          <details>
+            <summary>Da fare una volta</summary>
+            <ol>
+              <li>Aggiungi l'app alla schermata Home: apri il sito in Safari → Condividi → Aggiungi alla schermata Home. Da qui in poi usa SOLO l'icona, mai Safari.</li>
+              <li>Apri l'app dall'icona e fai l'accesso con email e codice (è separata da Safari: va rifatto qui). Al primo gioco con fotocamera tocca Consenti.</li>
+              <li>Crea in Comandi i comandi WB (Imposta sveglie, Fatto, Salta) e le due automazioni (Sera alle 21:00, Sveglia fermata) seguendo i passi che ti sono stati indicati a parte.</li>
+              <li>In Profilo imposta orario e giorni, poi tocca "Aggiorna sveglie" quando l'app te lo propone: crea in Orologio le sveglie WB.</li>
+            </ol>
+          </details>
+          <details>
+            <summary>Ogni giorno</summary>
+            <ul>
+              <li>Suona la sveglia WB → fermala → l'app si apre da sola (sblocca il telefono se serve).</li>
+              <li>Se vedi "Sono sveglio, spegni le sveglie" toccalo prima di iniziare il gioco: spegne le sveglie di controllo.</li>
+              <li>Fai la sfida. Se ti riaddormenti, le sveglie di controllo suonano a +2 e +4 minuti: fermale e continua, il gioco non si perde.</li>
+              <li>Se non ci sei: tocca "Salta" in "Oggi" fino a 30 minuti prima della tua sveglia (annullabile entro lo stesso limite). Il partner non se ne accorge finché non finisce di giocare.</li>
+            </ul>
+          </details>
+          <details>
+            <summary>Se cambi orario</summary>
+            <p>Cambia orario o giorni in Profilo, poi tocca "Aggiorna sveglie" quando l'app te lo propone (subito, o dopo la sfida di oggi se il cambio vale da domani). Finché non lo fai resta un avviso in "Oggi".</p>
+          </details>
+          <details>
+            <summary>Da NON fare</summary>
+            <ul>
+              <li>Non modificare né rinominare a mano le sveglie WB in Orologio: usa "Aggiorna sveglie".</li>
+              <li>Non rinominare i comandi e non disattivare le automazioni.</li>
+              <li>Non attivare lo snooze sulle sveglie WB.</li>
+              <li>Non togliere l'app dalla schermata Home (perdi l'accesso e i comandi non la trovano).</li>
+              <li>Non usare l'app da Safari: usa sempre l'icona.</li>
+              <li>Non negare il permesso della fotocamera.</li>
+            </ul>
+          </details>
+          <details>
+            <summary>Se qualcosa non va</summary>
+            <ul>
+              <li>Una sveglia di controllo suona mentre giochi (hai saltato "Sono sveglio") → fermala e continua: il gioco non si perde.</li>
+              <li>L'app non si è aperta da sola, o si è aperto Safari → apri l'app dall'icona: il cronometro è partito comunque all'orario della sveglia.</li>
+              <li>Chiede di nuovo la fotocamera → tocca Consenti.</li>
+              <li>La pagina sembra vecchia → ricaricala.</li>
+              <li>Telefono spento la sera → la mattina dopo suona solo la sveglia principale, senza quelle di controllo.</li>
+              <li>Sei in viaggio con un altro fuso orario → usa "Salta".</li>
+              <li>Dopo un comando vedi "Fatto?": se le sveglie non sono cambiate, apri Comandi e lancialo a mano.</li>
+              <li>In Orologio ci sono sveglie WB vecchie spente → puoi cancellarle a mano, non servono più.</li>
+            </ul>
+          </details>
+        </div>
+
         <div class="card">
           <p class="label">Account</p>
           <p id="p-account" class="hint"></p>
@@ -237,6 +302,6 @@
   <script src="vendor/zxing.js"></script>
   <script src="config.js"></script>
   <script src="games.js?v=23"></script>
-  <script src="app.js?v=24"></script>
+  <script src="app.js?v=25"></script>
 </body>
 </html>
