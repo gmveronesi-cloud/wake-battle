@@ -105,7 +105,12 @@ async function hideDoc(page, hidden) {
   check('lun: save_eye_video chiamata con un video', sv && typeof sv.body.p_video === 'string' && sv.body.p_video.startsWith('data:video/'), sv);
   check('lun: save_eye_video ok', sv && sv.r.ok === true);
   await page.waitForTimeout(300);
-  check('lun: video proprio mostrato in "Oggi"', (await page.locator('#o-video video').count()) === 1);
+  // v25: get_today() manda solo il flag "ha_video", il contenuto si scarica
+  // al tocco di "Guarda video" (get_eye_video)
+  check('lun: pulsante "Guarda video" (non ancora scaricato)', (await txt(page, '#o-video button')) === 'Guarda video');
+  await page.click('#o-video button');
+  await page.waitForSelector('#o-video video');
+  check('lun: video proprio mostrato in "Oggi" dopo il tocco', (await page.locator('#o-video video').count()) === 1);
   check('lun: controlli nativi (schermo intero via icona nativa)', await attr(page, '#o-video video', 'controls') !== null);
   check('lun: video del partner non ancora mostrato (giornata non chiusa)', !(await visible(page, '#o-p-video')));
   await shot(page, '102_occhi_oggi_fatto');
@@ -120,13 +125,22 @@ async function hideDoc(page, hidden) {
   await pageB.waitForSelector('#o-game[data-phase="gioca"] video', { timeout: 15000 });
   await pageB.waitForSelector('#o-result:not([hidden])', { timeout: 15000 });
   await pageB.waitForTimeout(300);
-  check('mar B: video proprio di B', (await pageB.locator('#o-video video').count()) === 1);
-  check('mar B: giornata chiusa -> vede subito anche il video di A', (await pageB.locator('#o-p-video video').count()) === 1);
+  await pageB.click('#o-video button');
+  await pageB.waitForSelector('#o-video video');
+  check('mar B: video proprio di B (dopo il tocco)', (await pageB.locator('#o-video video').count()) === 1);
+  check('mar B: giornata chiusa -> pulsante del partner disponibile subito', (await txt(pageB, '#o-p-video button')) === 'Guarda video');
+  await pageB.click('#o-p-video button');
+  await pageB.waitForSelector('#o-p-video video');
+  check('mar B: vede subito anche il video di A', (await pageB.locator('#o-p-video video').count()) === 1);
   await shot(pageB, '103_occhi_oggi_B_fatto');
 
   await reload(page);   // A ricarica: ora la giornata è chiusa anche per lui
+  await page.click('#o-p-video button');
+  await page.waitForSelector('#o-p-video video');
   check('lun A: ora vede anche il video di B', (await page.locator('#o-p-video video').count()) === 1);
-  check('lun A: il proprio resta visibile', (await page.locator('#o-video video').count()) === 1);
+  await page.click('#o-video button');
+  await page.waitForSelector('#o-video video');
+  check('lun A: il proprio resta visibile (dopo il tocco)', (await page.locator('#o-video video').count()) === 1);
   await shot(page, '104_occhi_oggi_entrambi_i_video');
 
   check('nessun errore in console (A)', errors.length === 0, errors);

@@ -64,6 +64,13 @@ const { T, check, db, rpc, openApp, txt, visible, shot, reload, tabTo, setupCoup
   // --- Martedì 06:45: cambio a 07:10 troppo vicino -> resta 07:00, messaggio
   T.fakeNow = '2026-09-22 06:45:00+02';
   await tabTo(page, 'profilo');
+
+  // Scheda "Istruzioni" (Passo 4): sezioni collassate via <details> native
+  check('profilo: scheda Istruzioni presente con più sezioni', (await page.locator('.instructions details').count()) >= 5);
+  check('profilo: sezioni chiuse di default', await page.locator('.instructions details').first().getAttribute('open') === null);
+  await page.click('.instructions summary >> nth=0');
+  check('profilo: una sezione si apre al tocco', (await page.locator('.instructions details').first().getAttribute('open')) !== null);
+
   await page.fill('#alarm-time', '07:10');
   await page.click('#f-alarm button[type="submit"]'); await page.waitForTimeout(500);
   check('mar: regola 30 min spiegata', (await txt(page, '#msg')).includes('meno di 30 minuti'), await txt(page, '#msg'));

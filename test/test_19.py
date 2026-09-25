@@ -1,14 +1,18 @@
 """Test del passo 3.12 (Esercizi) su Postgres locale che simula Supabase.
-Richiede DB con 00 + 01..19 caricati. Sesto (e ultimo) gioco con fotocamera,
-FRONTALE come "Occhi aperti": NESSUNA analisi reale, il server non riceve né
-verifica se l'esercizio è stato fatto davvero, solo la conferma {fatto:true}
-(come "luce"/"qr"/"caccia_colori"/"oggetto"/"occhi"). Novità di questo gioco:
+Richiede DB con 00 + 01..22 caricati (test rilanciato dopo 20/21/22, vedi
+STATO.md). Sesto (e ultimo) gioco con fotocamera, FRONTALE come "Occhi
+aperti": NESSUNA analisi reale, il server non riceve né verifica se
+l'esercizio è stato fatto davvero, solo la conferma {fatto:true} (come
+"luce"/"qr"/"caccia_colori"/"oggetto"/"occhi"). Novità di questo gioco:
 - l'esercizio estratto (uno tra i 4) non è mai uguale all'ultimo assegnato
   alla stessa coppia (wb_gp_esercizi legge couple_days);
-- il video (save_exercise_video, UNA stringa come save_eye_video) resta
-  visibile per 48 ORE PIENE dalla registrazione, non solo "oggi": get_today
-  lo mostra anche il giorno di gioco successivo, e il video del partner è
-  gated sulla chiusura della SUA giornata di ripresa (non su "oggi")."""
+- il video (save_exercise_video, UNA stringa come save_eye_video): dal 20
+  (rifinitura "video a richiesta") get_today() non lo manda più dentro la
+  risposta, solo un flag 'ha_video_esercizi' (proprio/partner, stesso gate
+  di sempre); il contenuto si scarica con get_exercise_video(p_partner).
+  Anche la durata della visibilità è cambiata in questa sessione: non più
+  48 ore piene dalla registrazione, ma solo la giornata di gioco in cui è
+  stato girato (day = d), esattamente come "Occhi aperti"."""
 import json
 
 from _lib import admin, as_user, check, clock, cur, expect_error, jrpc, report, rpc
@@ -81,9 +85,9 @@ check("mai NULL", cur.fetchone(), (False, False, False))
 
 # --- save_exercise_video: validazione (limite 34.000.000 byte, non 3.000.000
 # come occhi). Con l'utente C (mai unito a nessuna coppia, non usato più
-# avanti): il video del 48h/get_today si basa solo su "entro 48 ore",
-# nessun confronto col giorno della challenge, quindi qui non deve
-# sporcare la cronologia di A/B usata più avanti per quello.
+# avanti): get_exercise_video/get_today si basano su couple_members, quindi
+# qui non serve preoccuparsi di sporcare la cronologia di A/B usata più
+# avanti per quello.
 as_user(C)
 check("stringa senza prefisso data:video/ rifiutata", rpc("save_exercise_video", "ciao")["error"], "video_non_valido")
 check("prefisso data:image/ (non video) rifiutato", rpc("save_exercise_video", "data:image/jpeg;base64,x")["error"], "video_non_valido")
@@ -121,7 +125,8 @@ as_user(B); rpc("set_alarm", "07:30", [1, 2, 3, 4, 5])
 clock("2026-09-21 07:00:40"); as_user(A)
 t = rpc("get_today"); ch = t["io"]["challenge"]; pa = ch["parametri"]
 check("lun: challenge esercizi col gioco", (ch["codice"], ch["nome"], pa["gioco"], pa["secondi_max"]), ("esercizi", "Esercizi", "esercizi", 180))
-check("lun: niente video_esercizi prima del Fatto", rpc("get_today")["io"]["video_esercizi"], None)
+check("lun: niente video_esercizi prima del Fatto (flag)", rpc("get_today")["io"]["ha_video_esercizi"], False)
+check("lun: niente video_esercizi prima del Fatto (RPC)", rpc("get_exercise_video")["video"], None)
 check("lun: Fatto semplice rifiutato", rpc("complete_challenge")["error"], "serve_il_gioco")
 check("lun: risposta vuota rifiutata", jrpc("complete_game", {})["error"], "risposta_sbagliata")
 clock("2026-09-21 07:01:00.5")
@@ -132,10 +137,12 @@ clock("2026-09-21 07:01:05")
 VA = video("a")
 check("lun: A salva il suo video (può arrivare anche dopo il Fatto)", rpc("save_exercise_video", VA)["ok"], True)
 t = rpc("get_today")
-check("lun: A vede il suo video subito (giornata non chiusa)", (t["chiuso"], t["io"]["video_esercizi"]), (False, VA))
-check("lun: video del partner nascosto (giornata non chiusa)", t["partner"]["video_esercizi"], None)
+check("lun: A vede il flag subito (giornata non chiusa)", (t["chiuso"], t["io"]["ha_video_esercizi"]), (False, True))
+check("lun: A scarica il suo video con la RPC", rpc("get_exercise_video")["video"], VA)
+check("lun: video del partner nascosto (giornata non chiusa, flag)", t["partner"]["ha_video_esercizi"], False)
+check("lun: video del partner non scaricabile (giornata non chiusa)", rpc("get_exercise_video", True)["error"], "non_visibile")
 check("lun: sovrascrive, non accumula", rpc("save_exercise_video", video("z"))["ok"], True)
-check("lun: get_today mostra solo l'ultimo salvataggio", rpc("get_today")["io"]["video_esercizi"], video("z"))
+check("lun: get_exercise_video mostra solo l'ultimo salvataggio", rpc("get_exercise_video")["video"], video("z"))
 rpc("save_exercise_video", VA)   # ripristina per il resto del test
 
 clock("2026-09-21 07:31:20.2"); as_user(B)
@@ -146,47 +153,37 @@ VB = video("b")
 check("lun: B salva il suo video", rpc("save_exercise_video", VB)["ok"], True)
 t = rpc("get_today")
 check("lun: giornata chiusa (entrambi hanno finito)", t["chiuso"], True)
-check("lun: B vede il suo video", t["io"]["video_esercizi"], VB)
-check("lun: B vede ora anche quello di A", t["partner"]["video_esercizi"], VA)
+check("lun: B vede il proprio flag", t["io"]["ha_video_esercizi"], True)
+check("lun: B scarica il proprio video", rpc("get_exercise_video")["video"], VB)
+check("lun: B vede ora anche il flag di A", t["partner"]["ha_video_esercizi"], True)
+check("lun: B scarica ora anche il video di A", rpc("get_exercise_video", True)["video"], VA)
 as_user(A)
-check("lun: A vede ora anche quello di B", rpc("get_today")["partner"]["video_esercizi"], VB)
+check("lun: A vede ora anche il flag di B", rpc("get_today")["partner"]["ha_video_esercizi"], True)
+check("lun: A scarica ora anche il video di B", rpc("get_exercise_video", True)["video"], VB)
 
-# --- A DIFFERENZA di "Occhi aperti": NON sparisce col cambio di giornata di
-# gioco, resta visibile (a entrambi, non solo al proprietario) finché siamo
-# entro 48 ore piene dalla registrazione ---
-clock("2026-09-22 07:00:05"); as_user(B)
-t = rpc("get_today")
-check("mar, ancora entro 48h: B vede ancora il proprio video di lunedì", t["io"]["video_esercizi"], VB)
-check("mar, ancora entro 48h: B vede ancora quello di A (la giornata di lunedì resta chiusa)", t["partner"]["video_esercizi"], VA)
-as_user(A)
-check("mar, ancora entro 48h: A vede ancora entrambi i video", (rpc("get_today")["io"]["video_esercizi"], rpc("get_today")["partner"]["video_esercizi"]), (VA, VB))
-
-# --- scadenza a 48 ore piene dalla registrazione (VA salvato lun 07:01:05,
-# VB lun 07:31:20.2): oltre quel limite get_today non li mostra più, ma la
-# riga resta in tabella (nessun cron) finché lo stesso utente non registra
-# di nuovo (pulizia solo allora, come eye_videos/object_photos) ---
-clock("2026-09-23 07:01:00"); as_user(A)   # pochi secondi PRIMA delle 48h di VA
-check("mer, appena prima delle 48h: A vede ancora il proprio video", rpc("get_today")["io"]["video_esercizi"], VA)
-clock("2026-09-23 07:01:06"); as_user(A)   # appena DOPO le 48h di VA
-check("mer, appena dopo le 48h: il video di A non è più mostrato", rpc("get_today")["io"]["video_esercizi"], None)
-admin()
-cur.execute("select count(*) from public.exercise_videos where user_id = %s and day = '2026-09-21'", (A,))
-check("la riga di lunedì (A) è ancora in tabella (nessun cron dedicato)", cur.fetchone()[0], 1)
-
-as_user(B)
-clock("2026-09-23 07:31:00")   # meno di 48h dopo il salvataggio di lunedì di B (07:31:20.2)
-check("mer: B vede ancora il proprio video (appena prima delle 48h)", rpc("get_today")["io"]["video_esercizi"], VB)
-check("registrazione a <48h dal salvataggio di lunedì: quella riga non viene ancora ripulita", rpc("save_exercise_video", video("presto"))["ok"], True)
+# --- da questa sessione (20): NON resta più visibile 48 ore, si comporta
+# come "Occhi aperti", solo per la giornata di gioco in cui è stato girato
+# (sparisce da solo il giorno dopo, get_today mostra sempre solo "oggi") ---
+clock("2026-09-22 00:00:01"); as_user(B)
+check("22/09 appena dopo mezzanotte: il video di lunedì non è più 'oggi' (flag)", rpc("get_today")["io"]["ha_video_esercizi"], False)
+check("22/09 appena dopo mezzanotte: la RPC non lo restituisce più", rpc("get_exercise_video")["video"], None)
 admin()
 cur.execute("select count(*) from public.exercise_videos where user_id = %s and day = '2026-09-21'", (B,))
-check("registrazione a <48h dal salvataggio di lunedì: quella riga non viene ancora ripulita", cur.fetchone()[0], 1)
+check("la riga di lunedì è ancora in tabella (nessun cron dedicato)", cur.fetchone()[0], 1)
 
 as_user(B)
-clock("2026-09-23 07:31:21")   # più di 48h dopo il salvataggio di lunedì di B
-check("altra registrazione di mercoledì", rpc("save_exercise_video", video("tardi"))["ok"], True)
+clock("2026-09-22 07:31:00")   # meno di 24h dopo il salvataggio di lunedì di B (07:31:20.2)
+check("registrazione di martedì", rpc("save_exercise_video", video("presto"))["ok"], True)
 admin()
 cur.execute("select count(*) from public.exercise_videos where user_id = %s and day = '2026-09-21'", (B,))
-check("registrazione a >48h dal salvataggio di lunedì: quella riga viene ripulita", cur.fetchone()[0], 0)
+check("registrazione a <24h dal salvataggio di lunedì: quella riga non viene ancora ripulita", cur.fetchone()[0], 1)
+
+as_user(B)
+clock("2026-09-22 07:31:21")   # più di 24h dopo il salvataggio di lunedì di B
+check("altra registrazione di martedì", rpc("save_exercise_video", video("tardi"))["ok"], True)
+admin()
+cur.execute("select count(*) from public.exercise_videos where user_id = %s and day = '2026-09-21'", (B,))
+check("registrazione a >24h dal salvataggio di lunedì: quella riga viene ripulita", cur.fetchone()[0], 0)
 
 # giornate già create con altri giochi: il dispatcher li riconosce ancora
 admin()

@@ -19,7 +19,8 @@ const check = (label, cond, extra) => {
 // ---------- server statico ----------
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' };
 const server = http.createServer((req, res) => {
-  const f = path.join(WEB, req.url === '/' ? 'index.html' : req.url.split('?')[0]);
+  const p = req.url.split('?')[0];
+  const f = path.join(WEB, p === '/' ? 'index.html' : p);
   if (!f.startsWith(WEB) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); res.end(); return; }
   res.writeHead(200, { 'Content-Type': MIME[path.extname(f)] || 'application/octet-stream' });
   fs.createReadStream(f).pipe(res);
@@ -56,6 +57,9 @@ const RPC_ARGS = {
   save_object_photos: [['p_foto', 'jsonb']],
   save_eye_video: [['p_video', 'text']],
   save_exercise_video: [['p_video', 'text']],
+  get_object_photos: [['p_partner', 'boolean']],
+  get_eye_video: [['p_partner', 'boolean']],
+  get_exercise_video: [['p_partner', 'boolean']],
 };
 async function rpc(uid, fn, body) {
   const defs = (RPC_ARGS[fn] || []).filter(([n]) => body && n in body);

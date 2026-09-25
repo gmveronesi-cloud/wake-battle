@@ -112,7 +112,12 @@ async function tapFound(page, sel, n) {
   check('lun: save_object_photos chiamata con 5 miniature', sp && sp.body.p_foto.length === 5, sp);
   check('lun: save_object_photos ok', sp && sp.r.ok === true);
   await page.waitForTimeout(300);
-  check('lun: galleria propria mostrata in "Oggi"', (await page.locator('#o-foto img').count()) === 5);
+  // v25: get_today() manda solo il flag "ha_foto", il contenuto si scarica
+  // al tocco di "Vedi foto" (get_object_photos)
+  check('lun: pulsante "Vedi foto" (non ancora scaricate)', (await txt(page, '#o-foto button')) === 'Vedi foto');
+  await page.click('#o-foto button');
+  await page.waitForSelector('#o-foto img');
+  check('lun: galleria propria mostrata in "Oggi" dopo il tocco', (await page.locator('#o-foto img').count()) === 5);
   check('lun: foto del partner non ancora mostrate (giornata non chiusa)', !(await visible(page, '#o-p-foto')));
   await shot(page, '93_oggetto_oggi_fatto');
 
@@ -127,13 +132,23 @@ async function tapFound(page, sel, n) {
   await tapFound(pageB, '#o-game[data-phase="gioca"] .game-start', 5);
   await pageB.waitForSelector('#o-result:not([hidden])', { timeout: 10000 });
   await pageB.waitForTimeout(300);
-  check('mar B: galleria propria di B', (await pageB.locator('#o-foto img').count()) === 5);
-  check('mar B: giornata chiusa -> vede subito anche le foto di A', (await pageB.locator('#o-p-foto img').count()) === 5);
+  await pageB.click('#o-foto button');
+  await pageB.waitForSelector('#o-foto img');
+  check('mar B: galleria propria di B (dopo il tocco)', (await pageB.locator('#o-foto img').count()) === 5);
+  check('mar B: giornata chiusa -> pulsante "Vedi foto" del partner disponibile subito', (await txt(pageB, '#o-p-foto button')) === 'Vedi foto');
+  await pageB.click('#o-p-foto button');
+  await pageB.waitForSelector('#o-p-foto img');
+  check('mar B: vede subito anche le foto di A', (await pageB.locator('#o-p-foto img').count()) === 5);
   await shot(pageB, '94_oggetto_oggi_B_fatto');
 
   await reload(page);   // A ricarica: ora la giornata è chiusa anche per lui
+  check('lun A: pulsante "Vedi foto" del partner ora disponibile', (await txt(page, '#o-p-foto button')) === 'Vedi foto');
+  await page.click('#o-p-foto button');
+  await page.waitForSelector('#o-p-foto img');
   check('lun A: ora vede anche le foto di B, in una sezione separata', (await page.locator('#o-p-foto img').count()) === 5);
-  check('lun A: le proprie restano visibili nella loro sezione', (await page.locator('#o-foto img').count()) === 5);
+  await page.click('#o-foto button');
+  await page.waitForSelector('#o-foto img');
+  check('lun A: le proprie restano visibili nella loro sezione (dopo il tocco)', (await page.locator('#o-foto img').count()) === 5);
   check('lun A: due gallerie distinte (proprie dentro #o-result, del partner fuori, nella sua card)',
     (await page.locator('#o-result #o-foto').count()) === 1 && (await page.locator('#o-result #o-p-foto').count()) === 0);
   const partnerSrc = await page.locator('#o-p-foto img').first().getAttribute('src');
