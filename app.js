@@ -1,5 +1,5 @@
 'use strict';
-// Wake Battle v25 — Passo 1 (accesso + coppia) + Passo 2 (sveglie, punteggi) + Passo 3 (giochi veri: Memoria, Numeri in ordine, Colore della parola, Riflessi, Anagramma, Accendi la luce, QR o codice a barre, Caccia ai colori, Trova l'oggetto, Occhi aperti, Esercizi) + Passo 4 (video/foto a richiesta, "Salta", bilanciamento dell'estrazione, comandi iOS, scheda Istruzioni).
+// Wake Battle v26 — Passo 1 (accesso + coppia) + Passo 2 (sveglie, punteggi) + Passo 3 (giochi veri: Memoria, Numeri in ordine, Colore della parola, Riflessi, Anagramma, Accendi la luce, QR o codice a barre, Caccia ai colori, Trova l'oggetto, Occhi aperti, Esercizi) + Passo 4 (video/foto a richiesta, "Salta", bilanciamento dell'estrazione, comandi iOS, scheda Istruzioni).
 // Regola di sicurezza: i testi degli utenti vanno SEMPRE in textContent, mai in innerHTML.
 // Tempi e punti li decide il server: l'app mostra solo quello che il server risponde.
 
@@ -694,7 +694,11 @@
       if (!r) return;
       if (!r.ok) { msg(SALTA_ERRORS[r.error] || 'Non registrato. Riprova.'); return; }
       msg('Hai saltato ' + dayLabel(r.giorno) + '.', true);
-      runShortcut('WB Salta');
+      // WB Salta riceve la SERA DA SALTARE (giorno prima del giorno saltato, AAAA-MM-GG):
+      // la salva in wb_salta.txt e WB Sera, quella sera alle 21:00, non riaccende le sveglie.
+      const p = String(r.giorno).split('-').map(Number);
+      const sera = new Date(Date.UTC(p[0], p[1] - 1, p[2] - 1)).toISOString().slice(0, 10);
+      runShortcut('WB Salta', sera);
     }
     await loadToday();
   }));
